@@ -26,7 +26,8 @@ def main() -> int:
         elif hashlib.sha256(p.read_bytes()).hexdigest() != r.sha256:
             bad.append(f"CHANGED  {r.file}")
     listed = {str(ROOT / f) for f in cached["file"]}
-    orphans = [p for p in RAW.rglob("*.json") if str(p) not in listed]
+    orphans = [p for p in RAW.rglob("*") if p.is_file() and p.name != MANIFEST.name
+               and not p.name.startswith(".") and str(p) not in listed]
     for p in orphans:
         bad.append(f"ORPHAN   {p.relative_to(ROOT)} (not in {MANIFEST.name})")
     print(f"{len(cached)} cached files checked, {len(bad)} problem(s)")

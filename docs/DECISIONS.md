@@ -42,21 +42,30 @@ Only a group member changes an entry's status to `ACCEPTED`.
 **Decision:** The baselines are (1) day-of-season climatology computed from training seasons only (staff requirement), and (2) persistence (today's value carried forward 30 days). Optionally, log SEAS5 forecasts for the current 2026-27 season as a live, out-of-sample bonus.
 
 ## D-005 — Target: SNOTEL measured snow depth (SNWD) as ground truth
-**Status:** PROPOSED · 2026-11-09 (the user is leaning this way but "not sure")
+**Status:** ACCEPTED · 2026-11-10 (user: measured SNWD is the primary target; the SWE/density extension is D-026)
 **Context:** The original proposal predicted several weather variables and combined them into a composite ski-condition index. With SNOTEL available, we can predict a *measured* quantity instead of a reanalysis estimate.
 **Options:**
 1. **SNWD** (snow depth, inches). This is what skiers feel. Record starts around 1997–98 at the best stations, giving up to ~28 winters; at many stations it starts around 2004–07.
 2. **WTEQ** (snow water equivalent). Records start 1979+ (up to ~46 winters) and come from a pillow sensor, so they are typically cleaner. It is less directly "skiable".
 3. Open-Meteo reanalysis snow depth (not measured; grid-cell value; ~21% low at Independence Pass).
 **Leaning:** (1) SNWD at time *t*+30 days as the target. Open-Meteo supplies the weather features; it remains the primary weather source, as staff require. WTEQ is kept as a fallback or secondary target if the SNWD record proves too short.
-**Open:** keep the original composite ski-condition index as a secondary output, or drop it? Not decided.
+**Resolved 2026-11-10:** the composite ski-condition index is kept as a SECONDARY output (see D-026). Measured SNWD on day *t*+30 is the primary target. Evaluation uses measured, non-imputed SNWD only.
 
 ## D-006 — Use as many winters as possible
 **Status:** ACCEPTED · 2026-11-09 (user)
 **Implication:** Each station uses its full usable SNWD record (no common start year is imposed across resorts). The train/test split is by winter, with the later winters as the test set. Climatology is computed from training winters only (staff condition).
 
 ## D-007 — Separate model per resort; 3 resorts
-**Status:** Separate models ACCEPTED (user: "separate models, maybe 3 resorts"). Resort choice PROPOSED pending the coverage evidence in notebook 01 · 2026-11-09
+**Status:** ACCEPTED · 2026-11-10 (separate models: user 2026-11-09; maritime pick: user "choose the one with the best data")
+**Final resorts:**
+- **Aspen CO** (continental): fixed composite of Kiln + Brumley, 2004–2026, 23 winters (D-008)
+- **Brighton UT** (intermountain): 366:UT:SNTL, 1998–2026, 29 winters
+- **Heavenly CA** (Sierra): 518:CA:SNTL, 2000–2026, 27 good winters with no gaps; best agreement with ERA5-Land (r 0.955, bias −35 %)
+
+**Why Heavenly for the maritime slot:** it has the best data, as the user asked. Palisades Tahoe has 24 winters (2003+, no gaps, r 0.91, −40 %). Stevens Pass has 23 (2003+, a gap in 2004, a low 3,940 ft station, and the sensor issues found in notebook 01 §2.6).
+**Limitation (state it in the revised proposal):** Heavenly is on the east/lee side of Lake Tahoe, so it is drier and less "maritime" than Palisades. It is still a Sierra snow climate distinct from CO/UT.
+
+**History of this decision:**
 **Proposed resorts** (one per snow climate):
 - **Aspen**, continental Colorado (see D-008)
 - **Brighton UT**, intermountain (366:UT:SNTL). SNWD from 1997, a longer record than Snowbird's (~2003)
@@ -77,7 +86,32 @@ climate, 24 winters) or Heavenly (3 more winters, best agreement with ERA5-Land,
 genuinely maritime alternative, but its station is low (1,200 m) and it has the sensor issues found in §2.6 (40 cases of depth < SWE, 82 extreme temperatures).
 
 ## D-008 — How to represent Aspen as one resort
-**Status:** PROPOSED / open · 2026-11-09
+**Status:** ACCEPTED · 2026-11-10 (user: "Aspen, let's do 2004-on")
+**Decision:** Aspen = a **fixed composite of Kiln (556:CO) + Brumley (369:CO), winters 2004–2026 (23 winters)**.
+- The composite SNWD is the mean of the two stations on days when **both** are present, and NaN otherwise. A day with one station missing never becomes a one-station "composite".
+- Both-present coverage is ≥ 96.6 % of Dec–Mar days. That figure is for the 3-member set Kiln + Brumley + Ivanhoe; a 2-member set can only be higher. The exact value is computed in modelling.
+- The two stations correlate r = 0.93 (Dec–Mar daily SNWD).
+
+**Evidence:** cleaned data (notebook 02), Dec–Mar winters with ≥ 100 good days, 2004–2026:
+
+| Station | Complete winters (of 23) | Missing | Notes |
+|---|---|---|---|
+| **Kiln** 556:CO | **23** | – | 9,610 ft, 22.7 km from Aspen Mtn, r 0.94 vs ERA5-Land, bias −4 % |
+| **Brumley** 369:CO | **23** | – | 10,570 ft, 26.1 km, r 0.90, bias −8 % |
+| Nast Lake 658:CO | 22 | 2005 | low (8,710 ft), +31 % bias, temperature r 0.67 |
+| Butte 380:CO | 22 | 2005 | Crested Butte side, 34 km; temperature r 0.12 |
+| Schofield Pass 737:CO | 22 | 2004 | Crested Butte/Marble side; −50 % bias (very snowy, not Aspen-typical) |
+| North Lost Trail 669:CO | 21 | 2007, 2008 | noisy depth sensor (r 0.55) |
+| Ivanhoe 547:CO | 19 | 2005–2008 | east of the Divide |
+| Independence Pass 542:CO | 19 | 2004–06, 2010 | |
+
+**Rationale:** only Kiln and Brumley are complete over 2004–2026. Fixed membership means the composite never changes which stations it contains. Both are at ski-terrain elevation and track ERA5-Land well with small bias.
+**Rejected:**
+- Ivanhoe alone, 1998+: longer record, but 4 missing winters in 2005–2008 and east of the Divide.
+- Adding Nast Lake / Ivanhoe / Independence Pass to the composite: each has missing winters, so the membership would change.
+- Schofield, Butte, North Lost Trail: wrong side of the range or noisy sensors.
+
+**Original framing (2026-11-09):**
 **Options:** (a) a single representative SNOTEL station; (b) a composite (e.g. the mean) of several Aspen-area stations.
 **Risk with (b):** stations start in different years, so a simple mean changes composition over time and creates artificial jumps. A composite would need a fixed station set over the period it covers.
 **Evidence to come:** notebook 01 §5, covering inter-station SNWD correlation, coverage by winter, and distance and elevation relative to Aspen's 4 ski areas (Aspen Mountain, Highlands, Buttermilk, Snowmass).
@@ -110,7 +144,7 @@ genuinely maritime alternative, but its station is low (1,200 m) and it has the 
 **Decision:** A uv project (`pyproject.toml` + `uv.lock`) with Python 3.12, matching the course homework workflow. Run with `uv sync`, then `uv run jupyter lab`.
 
 ## D-013 — Public GitHub repo
-**Status:** PROPOSED (the exclusion is pending group confirmation) · 2026-11-09
+**Status:** ACCEPTED · 2026-11-10 (user confirmed the `Original Proposal/` exclusion)
 **Decision:** Public repo `MrDevel0per/cs109A-final-project`, with collaborators mlehuray246 and nxt-txms.
 **Exclusion:** `Original Proposal/` (course spec, staff comments, and a PDF containing the author's email) is excluded from the public repo by default. It is easy to add later if the group agrees.
 
@@ -133,7 +167,119 @@ The ad-hoc exploratory `curl` probes in session 1 (pre-repo, results only in DAT
 **Why not the others:** (b) LFS's free tier caps storage and bandwidth at 1 GB, and each collaborator clone counts against it; it's only needed for files over 100 MB, and ours are ≤ 9 MB. (c) Drive separates data from the code and commit history, so lineage depends on a link staying alive. (d) Upstream data changes over time, so a re-fetch would not reproduce our results.
 **Revisit if:** a single file gets close to 50 MB (GitHub's warning size), or the total passes ~500 MB.
 
+## D-016 — SNOTEL flag policy
+**Status:** ACCEPTED · 2026-11-10 (notebook 02 §4)
+**Decision:**
+- NRCS suspect (S) values become NaN, and the suspect original is never restored.
+- Edited, estimated and corrected values (E/K/C) are kept, with their flags carried per row.
+- Undocumented G/T flags are kept and judged by the physical rules.
+
+**Evidence:**
+- The originals behind S are implausible (snow depth −280 to +269 in).
+- E/K/C covers 804k rows; C is on about 57 % of temperature values.
+- The G rows (Vail 1985, about 3000 °F) are removed by the bounds rule.
+- Notebook 01b found suspect values include physically impossible ones (Ivanhoe TMIN = 2148.6 °F).
+
+## D-017 — Spike rule
+**Status:** ACCEPTED · 2026-11-10 (notebook 02 §5)
+**Decision:** residual from a centred 7-day rolling median: snow depth > 20 in becomes NaN (28 rows); SWE > 5 in becomes NaN (2 rows).
+**Evidence:**
+- The residual histogram has its minimum at 20–30 in.
+- NRCS edits can be wrong: at Vail in 2008, raw readings of about 199 in were edited to 0 in, and this rule caught them.
+
+## D-018 — Depth/SWE consistency
+**Status:** ACCEPTED · 2026-11-10 (notebook 02 §5)
+**Decision:**
+- Depth < SWE (density > 1, with SWE ≥ 1 in) sets depth to NaN (134 rows).
+- Density 0.7–1 is flagged only (82 rows).
+- In-season depth of 0 with SWE > 4 in becomes NaN (0 found; kept as a guard).
+
+**Evidence:** density median is 0.28; the 99.9th percentile is 0.70.
+
+## D-019 — Summer noise
+**Status:** ACCEPTED · 2026-11-10 (notebook 02 §5)
+**Decision:** in Jul–Sep, SWE = 0 with depth > 0 sets depth to 0 (878 rows).
+**Evidence:** median 3 in, max 24 in of "snow" over an empty pillow. The ultrasonic sensor is seeing vegetation.
+
+## D-020 — Negative depth (guard)
+**Status:** ACCEPTED · 2026-11-10 (notebook 02 §5)
+**Decision:** values in [−4, 0) in become 0; values below −4 in become NaN.
+**Evidence:** all 59 raw negatives were already removed as suspect (D-016), so 0 rows changed. The rule is kept as a guard.
+
+## D-021 — Temperature rules
+**Status:** ACCEPTED · 2026-11-10 (notebook 02 §5)
+**Context:** SNOTEL temperatures are secondary; Open-Meteo is the primary temperature source.
+**Decision:**
+- A value repeated for ≥ 5 consecutive days (stuck logger) becomes NaN: about 1,320 rows per variable.
+- Bounds of [−50, 100] °F.
+- Residual from the 7-day rolling median > 30 °F.
+- TMIN > TMAX: both become NaN.
+- TAVG outside [TMIN − 1, TMAX + 1] °F.
+- Daily range > 35 °C: TMAX becomes NaN (179 rows).
+- TAVG − TMIN > 20 °C: TAVG becomes NaN (122 rows).
+
+**Evidence:**
+- Repeated-value run counts level off from 5 to 10+ days.
+- −60.3 °F repeats as a sensor floor.
+- Both range tails flatten past their 99.9th percentiles.
+- The Stevens Pass heat dome (37 °C, 2021-06-29) is verified kept.
+
+## D-022 — Imputation (causal)
+**Status:** ACCEPTED · 2026-11-10 (notebook 02 §6; replaces the first draft's two-sided linear interpolation, which looked ahead)
+**Decision:**
+- Forward-fill interior gaps of ≤ 3 days in SNWD, WTEQ, TAVG, TMAX and TMIN, per station, flagged `*_imputed`. Longer gaps stay entirely NaN (never partially filled), as do leading and trailing gaps.
+- No precipitation imputation.
+- Filled values never contain future information, so they are safe as features.
+- **Imputed target rows are excluded from training labels and evaluation.**
+
+**Evidence:**
+- 88 % of snow-depth gaps are ≤ 3 days (44 % of gap-days); longer gaps (up to 79 days) are left NaN.
+- Causality is unit-tested (`tests/test_clean.py`).
+
+**Caveat:** no future *value* ever enters a filled cell. But deciding *whether* a gap qualifies ("it ends within 3 days") uses the missingness pattern after day *t*. A fully causal alternative, `ffill(limit=3)`, would also partially fill long gaps, so it was not used. The effect is negligible: it determines only which rows are filled, never what value they get.
+
+## D-023 — Calendar and season labels
+**Status:** ACCEPTED · 2026-11-10 (notebook 02 §2)
+**Decision:**
+- Continuous daily calendar per station.
+- Season window Nov 1 – Apr 30 (`in_season`).
+- `winter` is the year the winter ends (Jul–Dec count toward the next year).
+- `water_year` (Oct–Sep) is used for PREC, which resets each Oct 1 (notebook 01b).
+
+**Evidence:** 38 absent days were inserted; otherwise the API returns explicit null rows.
+
+## D-024 — Leakage from NRCS's after-the-fact edits
+**Status:** ACCEPTED · 2026-11-10 (notebook 02 §10)
+**Context:** on a real prediction date, a forecaster would have only the raw, provisional reading.
+- NRCS later edits 29 % of snow-depth and 34 % of SWE values (median change 1.0 in / 0.2 in).
+- It approves values months later. Recent winters are mostly provisional (P), and there are no QA flags at all before about 2023.
+
+**Decision:** modelling must include a robustness run whose day-*t* features use `*_nrcs_orig` (the raw readings) instead of the edited values.
+
+## D-025 — Keep everything in the clean table
+**Status:** ACCEPTED · 2026-11-10 (notebook 02 §11)
+**Decision:** all 20 candidate stations and the full period stay in `data/processed/snotel_clean.parquet`. Resort and station selection (D-007/D-008) happens downstream by filtering rows.
+**Evidence:** 285,778 rows × 49 columns, 4.51 MB parquet.
+
+## D-026 — Extension: SWE ↔ depth via snow density; ski-condition index as a secondary output
+**Status:** PROPOSED · 2026-11-10 (user asked whether a formula could estimate both depth and SWE, or a two-pass model could produce a quality score)
+**Physics:** depth = SWE / density. Snow density varies predictably with season, snowpack age, temperature and climate. Published models:
+- Sturm et al. 2010, *J. Hydrometeorology*, "Estimating snow water equivalent using snow depth data and climate classes".
+- Hill et al. 2019, *The Cryosphere*, "Converting snow depth to snow water equivalent using climatological variables".
+
+Our own data: density median 0.28, 99.9th percentile 0.70 (notebook 02).
+**Proposal:**
+1. Fit a per-station density model (e.g. density ~ day-of-season + recent temperature + SWE) on **training winters only**, using days where both SNWD and WTEQ were measured (not imputed).
+2. (a) **Reconstruct depth from SWE back to ~1980**, for training augmentation only. Reconstructed depth is **never evaluation truth**.
+3. (b) **Two-stage model:** predict SWE at *t*+30 (longer, cleaner record), convert it with the density model, and compare against direct depth prediction on the same held-out winters.
+4. **Quality score:** the original proposal's transparent ski-condition index, computed from predicted depth plus Open-Meteo weather (sunshine, temperature, wind). It is a **secondary** output, reported with sensitivity to the weights, as the proposal promised.
+
+**Guardrails:** the density model and any index weights are fit on training winters only. Evaluation uses measured, non-imputed SNWD.
+
+## Group (recorded 2026-11-10)
+- Canvas project group **37**. Members: **Nat Toms, Owen Cruz-Abrams, Martha le Huray**.
+- GitHub: MrDevel0per (repo owner), mlehuray246, nxt-txms (collaborators).
+- The original proposal (Milestone 0) lists Tomer Burstein as author.
+
 ## Open questions for the group
-- Q1: Target: SNWD (D-005) or WTEQ? Keep the original composite ski-condition index as a secondary output, or drop it?
-- Q2: Aspen representation (D-008): one station, or a fixed-membership composite?
-- Q4: Confirm excluding `Original Proposal/` from the public repo (D-013).
+- None blocking as of 2026-11-10. D-002 and D-004 are still marked PROPOSED pending explicit group sign-off. D-026 is a proposed extension.

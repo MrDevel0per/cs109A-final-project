@@ -1,0 +1,50 @@
+column,description,unit
+station,SNOTEL station triplet (id:state:network),
+station_name,NRCS station name,
+group,resort group from src/sites.py,
+date,observation date (AWDB periodRef=END),
+winter,season label = year the winter ends (Jul–Dec -> next year),
+water_year,"Oct 1 – Sep 30, labelled by end year (PREC resets)",
+in_season,Nov 1 – Apr 30,
+SNWD_cm,snow depth (target) — cleaned (see cleaning_log.csv),cm
+WTEQ_cm,snow-water equivalent — cleaned (see cleaning_log.csv),cm
+TAVG_C,daily mean air temp — cleaned (see cleaning_log.csv),°C
+TMAX_C,daily max air temp — cleaned (see cleaning_log.csv),°C
+TMIN_C,daily min air temp — cleaned (see cleaning_log.csv),°C
+PRCP_mm,daily precipitation increment — cleaned (see cleaning_log.csv),mm
+PREC_mm,precipitation accumulated since Oct 1 — cleaned (see cleaning_log.csv),mm
+SNWD_clean_flag,"our cleaning rule IDs applied to SNWD, ';'-separated ('' = untouched)",
+SNWD_imputed,True if SNWD was filled by causal forward fill of a ≤3-day interior gap,
+SNWD_nrcs_qc,NRCS QC flag for SNWD,
+SNWD_nrcs_qa,NRCS QA flag for SNWD,
+SNWD_nrcs_orig,"NRCS original (pre-edit) reading of SNWD, SOURCE units",in
+WTEQ_clean_flag,"our cleaning rule IDs applied to WTEQ, ';'-separated ('' = untouched)",
+WTEQ_imputed,True if WTEQ was filled by causal forward fill of a ≤3-day interior gap,
+WTEQ_nrcs_qc,NRCS QC flag for WTEQ,
+WTEQ_nrcs_qa,NRCS QA flag for WTEQ,
+WTEQ_nrcs_orig,"NRCS original (pre-edit) reading of WTEQ, SOURCE units",in
+TAVG_clean_flag,"our cleaning rule IDs applied to TAVG, ';'-separated ('' = untouched)",
+TAVG_imputed,True if TAVG was filled by causal forward fill of a ≤3-day interior gap,
+TAVG_nrcs_qc,NRCS QC flag for TAVG,
+TAVG_nrcs_qa,NRCS QA flag for TAVG,
+TAVG_nrcs_orig,"NRCS original (pre-edit) reading of TAVG, SOURCE units",°F
+TMAX_clean_flag,"our cleaning rule IDs applied to TMAX, ';'-separated ('' = untouched)",
+TMAX_imputed,True if TMAX was filled by causal forward fill of a ≤3-day interior gap,
+TMAX_nrcs_qc,NRCS QC flag for TMAX,
+TMAX_nrcs_qa,NRCS QA flag for TMAX,
+TMAX_nrcs_orig,"NRCS original (pre-edit) reading of TMAX, SOURCE units",°F
+TMIN_clean_flag,"our cleaning rule IDs applied to TMIN, ';'-separated ('' = untouched)",
+TMIN_imputed,True if TMIN was filled by causal forward fill of a ≤3-day interior gap,
+TMIN_nrcs_qc,NRCS QC flag for TMIN,
+TMIN_nrcs_qa,NRCS QA flag for TMIN,
+TMIN_nrcs_orig,"NRCS original (pre-edit) reading of TMIN, SOURCE units",°F
+PREC_clean_flag,"our cleaning rule IDs applied to PREC, ';'-separated ('' = untouched)",
+PREC_imputed,True if PREC was filled by causal forward fill of a ≤3-day interior gap,
+PREC_nrcs_qc,NRCS QC flag for PREC,
+PREC_nrcs_qa,NRCS QA flag for PREC,
+PREC_nrcs_orig,"NRCS original (pre-edit) reading of PREC, SOURCE units",in
+PRCP_clean_flag,"our cleaning rule IDs applied to PRCP, ';'-separated ('' = untouched)",
+PRCP_imputed,True if PRCP was filled by causal forward fill of a ≤3-day interior gap,
+PRCP_nrcs_qc,NRCS QC flag for PRCP,
+PRCP_nrcs_qa,NRCS QA flag for PRCP,
+PRCP_nrcs_orig,"NRCS original (pre-edit) reading of PRCP, SOURCE units",in

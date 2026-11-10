@@ -42,3 +42,14 @@ CANDIDATE_STATIONS = {
 
 SNOTEL_ELEMENTS = ["SNWD", "WTEQ", "TAVG", "TMAX", "TMIN", "PREC", "PRCP"]
 SNOTEL_PERIOD = ("1978-10-01", "2026-07-31")
+
+# ---- FINAL modelling resorts (D-007, D-008; decided 2026-11-10) ------------------------------------
+# One model per resort. Target = measured SNOTEL snow depth (D-005); evaluation on measured, non-imputed days only.
+# Aspen is a FIXED-membership composite (mean of members on days ALL members are present, else NaN) so the
+# composition never changes over time; Kiln + Brumley are the only Aspen-area stations with every winter 2004–2026.
+RESORTS = {
+    "Aspen":    {"stations": ["556:CO:SNTL", "369:CO:SNTL"], "first_winter": 2004, "climate": "continental (CO)"},
+    "Brighton": {"stations": ["366:UT:SNTL"],                "first_winter": 1998, "climate": "intermountain (UT)"},
+    "Heavenly": {"stations": ["518:CA:SNTL"],                "first_winter": 2000, "climate": "Sierra, lee side of Tahoe (CA)"},
+}
+LAST_WINTER = 2026

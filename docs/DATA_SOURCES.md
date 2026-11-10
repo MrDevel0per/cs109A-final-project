@@ -192,3 +192,53 @@ At this site Open-Meteo's reanalysis tracks real snow depth well, but it is bias
 - Validation (Dec–Mar, 1995–2026, ERA5-Land at station lat/lon/elevation): depth r 0.85–0.96 except North Lost Trail 0.55; bias −4 % (Kiln) to −59 % (Snowbird); temperature r ≈ 0.9 except Butte 0.12, Nast Lake 0.67.
 - **Date alignment:** SNOTEL value dated *t* best matches Open-Meteo `snow_depth_mean` of day *t+1* (19 of 20 stations; lag correlation of daily changes).
 - Elevation test at Aspen: snow depth 0.69 → 0.73 m at 3400 m (an otherwise constant snow field). Possibly a different grid cell is chosen. Unverified.
+
+## 5. Independent verification (notebook 01b, 2026-11-10)
+
+**SNOTEL: our parser vs the NRCS Report Generator CSV** (an independent NRCS endpoint, fetched via `src/lineage_text.py`).
+Checked at Ivanhoe (547:CO, ~12.7k days) and Palisades Tahoe (784:CA, ~16.7k days):
+- 100 % exact match for WTEQ, SNWD, TAVG, TMAX, TMIN and PRCP, and 99.73 % for PREC. **0 unexplained mismatches.**
+- The leftover differences are fully explained:
+  - (a) **PREC resets to 0 at the start of each water year (Oct 1)**, so difference it within a water year or use PRCP.
+  - (b) **Suspect (S) values**, which AWDB returns only because we set `returnSuspectData=true` and which the Report Generator hides. Some are physically impossible, e.g. Ivanhoe TMIN = 2148.6 °F on 1994-10-01, so cleaning must drop S values.
+- Report Generator URL format: `https://wcc.sc.egov.usda.gov/reportGenerator/view_csv/customSingleStationReport/daily/<triplet>%7Cid=%22%22%7Cname/POR_BEGIN,POR_END/<EL>::value,...`
+- NRCS's own CSV header warns that data are "subject to revision regardless of indicated Quality Assurance level" and that "SNOTEL air temperature data contains a known bias".
+
+**SNOTEL date semantics (checked directly).**
+- SNWD, WTEQ and PREC are instantaneous midnight readings. With `periodRef=END`, the AWDB value dated *d* is the reading at the **end of day *d*** (SNWD END(*d*) = START(*d*+1)). The Report Generator labels the same reading "start of day *d*+1".
+- Daily aggregates (TAVG/TMAX/TMIN/PRCP) carry the same date under either setting.
+- **For modelling:** weather on day *d* pairs with SNWD dated *d*, and "depth 30 days after *t*" is SNWD dated *t*+30.
+- This explains notebook 01's lag result: the end-of-day reading leads Open-Meteo's daily *mean* by about a day.
+- SNOTEL stamps are in local *standard* time all year, while `timezone=auto` switches to daylight time in mid-March. The resulting ≤1 h offset is negligible for daily depth.
+
+**Open-Meteo: daily vs hourly.** With `timezone=auto`, daily `snow_depth_mean/max` equal the **local-calendar-day** mean/max of the hourly `snow_depth` on 100 % of 182 days (ERA5-Land and ERA5-seamless, Aspen 2023-24). Aggregating by UTC day would disagree on 34–50 % of days, so always request `timezone=auto`.
+- *The temperature version of this check is pending.* Open-Meteo's **hourly** request limit was hit. Re-run 01b §3b later.
+
+**Rate limits.** Besides the per-minute limit, Open-Meteo has an **hourly** limit ("Hourly API request limit exceeded"). A full notebook-01 run can reach it, and a 65 s back-off does not clear it. The cache means re-runs cost nothing.
+
+**pandas 3 note:** missing flag strings come back as NaN, not None. Use `pd.isna`, never `is None`.
+
+**Tests:** `uv run pytest` runs 24 offline tests covering lineage, offline mode, manifest migration, verify_raw, parse and `winter_of`.
+
+## 6. Cleaning (notebook 02, 2026-11-10)
+Evidence and rules are in `notebooks/02_cleaning_snotel.ipynb`. Each rule's rows affected are in `data/processed/cleaning_log.csv`. Decisions: D-016 to D-025.
+
+**Missingness (SNWD)**
+- 40.5 % of station-days are NaN, but 39.8 % are days before the sensor was installed.
+- Missing while installed: 1.19 % (2,043 days; 1.36 % in Nov–Apr). After the causal ≤3-day fill: 0.75 %.
+- Gaps cluster in each sensor's first winters (~2003–2010) and are near zero after 2011.
+- They are mostly NRCS suspect (S) removals.
+- They are **not depth-dependent**: depth the day before a gap is 42.1 in vs an in-season mean of 41.1 in.
+- Only 35 % coincide with a temperature gap.
+- Temperature: ~14 % before install, ~1.7 % missing while installed. SWE and precipitation are almost complete.
+
+**Output:** `data/processed/snotel_clean.parquet`
+- 285,778 rows × 49 columns, 4.51 MB; 20 stations, 1978-10-01 to 2026-07-31.
+- SI units, plus provenance columns per variable: `_clean_flag`, `_imputed`, `_nrcs_qc`, `_nrcs_qa`, `_nrcs_orig`.
+- 84,261 usable target station-days (in season, measured, not imputed); 2.5 % zeros; skew 1.07.
+
+**Surprises**
+- **NRCS edits can be wrong.** At Vail on 2008-03-17 and 2008-04-10, raw readings of ~199 in were "edited" to 0 in. The spike rule caught both.
+- **Stuck temperature loggers:** ~1,300 flat-lined days per temperature variable, mostly 1985–1991 at Palisades, Stevens Pass, Heavenly and Brumley.
+- **−60.3 °F sentinel:** appears ~187 times in the original readings, 131 of them at Independence Pass.
+- **No QA flags before ~2023.** Recent winters are mostly provisional (P), so NRCS may still revise them (D-024).
