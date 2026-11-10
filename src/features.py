@@ -13,9 +13,12 @@ import pandas as pd
 import parse
 from lineage import open_meteo
 
-ERA5_DAILY = ["temperature_2m_max", "temperature_2m_min", "temperature_2m_mean", "precipitation_sum", "rain_sum",
-              "snowfall_sum", "sunshine_duration", "daylight_duration", "wind_speed_10m_max", "wind_gusts_10m_max",
-              "cloud_cover_mean", "relative_humidity_2m_mean", "shortwave_radiation_sum", "pressure_msl_mean"]
+# 10 variables = weight 1.0 per (14 days) under Open-Meteo's fair-use accounting (D-027). Dropped as redundant /
+# derivable: daylight_duration (deterministic from date+lat), rain_sum (~ precipitation - snowfall water eq.),
+# wind_gusts_10m_max (~ wind_speed_10m_max), shortwave_radiation_sum (~ sunshine_duration + cloud cover).
+ERA5_DAILY = ["temperature_2m_max", "temperature_2m_min", "temperature_2m_mean", "precipitation_sum",
+              "snowfall_sum", "sunshine_duration", "wind_speed_10m_max", "cloud_cover_mean",
+              "relative_humidity_2m_mean", "pressure_msl_mean"]
 ERA5_LAND_DAILY = ["temperature_2m_mean", "temperature_2m_max", "temperature_2m_min", "snow_depth_mean"]
 MODEL_VARS = {"era5": ERA5_DAILY, "era5_land": ERA5_LAND_DAILY}
 

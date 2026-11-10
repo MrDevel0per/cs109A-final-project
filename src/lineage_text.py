@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 
 import requests
 
-from lineage import RAW, ROOT, USER_AGENT, _log
+from lineage import RAW, ROOT, USER_AGENT, get_with_retry, store_and_log  # noqa: F401
 
 
 def fetch_text(url: str, *, source: str, name: str, ext: str = "csv", refresh: bool = False,
@@ -27,25 +27,8 @@ def fetch_text(url: str, *, source: str, name: str, ext: str = "csv", refresh: b
     if os.environ.get("SNOWPREDICT_OFFLINE") == "1":
         raise FileNotFoundError(f"offline mode: {name} not in data/raw cache (url: {url})")
 
-    r = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=180)
-    for attempt in range(max(retries - 1, 0)):
-        if r.status_code != 429 and r.status_code < 500:
-            break
-        time.sleep(65 if r.status_code == 429 else 5 * (attempt + 1))
-        r = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=180)
-    time.sleep(pause)
-
-    transient = r.status_code == 429 or r.status_code >= 500
-    _log({
-        "fetched_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "source": source, "name": name, "url": url,
-        "file": "" if transient else str(path.relative_to(ROOT)), "bytes": len(r.content),
-        "sha256": hashlib.sha256(r.content).hexdigest(), "http_status": r.status_code,
-    })
-    if transient:
-        raise RuntimeError(f"HTTP {r.status_code} for {url}: {r.text[:200]}")
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(r.content)
+    r = get_with_retry(url, retries=retries, pause=pause)
+    store_and_log(r, url=url, path=path, source=source, name=name)  # same crash-safe path as lineage.fetch
     return r.content.decode("utf-8")
 
 

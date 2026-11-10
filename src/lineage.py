@@ -71,6 +71,8 @@ def _log(row: dict) -> None:
         if new:
             w.writeheader()
         w.writerow(row)
+        f.flush()
+        os.fsync(f.fileno())  # the manifest line is on disk before the data file is renamed into place
 
 
 def fetch(base: str, params: dict, *, source: str, name: str, refresh: bool = False,
@@ -85,15 +87,50 @@ def fetch(base: str, params: dict, *, source: str, name: str, refresh: bool = Fa
         # Downstream notebooks (cleaning, modelling) set this so they can ONLY use logged raw data.
         raise FileNotFoundError(f"offline mode: {name} not in data/raw cache (url: {url})")
 
-    r = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=180)
-    for attempt in range(max(retries - 1, 0)):
-        if r.status_code != 429 and r.status_code < 500:
-            break
-        # Open-Meteo's free tier has per-minute/hour/day limits; a minutely 429 clears after ~60 s.
-        time.sleep(65 if r.status_code == 429 else 5 * (attempt + 1))
-        r = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=180)
-    time.sleep(pause)
+    r = get_with_retry(url, retries=retries, pause=pause)
+    store_and_log(r, url=url, path=path, source=source, name=name)
+    return json.loads(r.content)
 
+
+NETWORK_ERRORS = (requests.exceptions.ConnectionError, requests.exceptions.Timeout,
+                  requests.exceptions.ChunkedEncodingError)
+
+
+def get_with_retry(url: str, *, retries: int = 5, pause: float = 0.3) -> requests.Response:
+    """GET with back-off on rate limits (429), server errors (5xx) and NETWORK failures (Wi-Fi drop, sleep, DNS).
+    Network errors are retried with growing waits; if they persist, the last one is raised (callers may retry)."""
+    r: requests.Response | None = None
+    last_exc: Exception | None = None
+    for attempt in range(max(retries, 1)):
+        try:
+            r = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=180)
+            last_exc = None
+        except NETWORK_ERRORS as e:          # disconnected / asleep / DNS: wait 10, 30, 60, 120, 240 s
+            last_exc = e
+            time.sleep(min(10 * 3 ** attempt, 60) if attempt < 2 else min(60 * 2 ** (attempt - 2), 300))
+            continue
+        if r.status_code != 429 and r.status_code < 500:
+            time.sleep(pause)
+            return r
+        if r.status_code == 429 and "Minutely" not in r.text:
+            return r                         # hourly/daily limit: retrying in-process is pointless; caller decides
+        if attempt < retries - 1:            # minutely 429 clears after ~60 s; 5xx gets a short back-off
+            time.sleep(65 if r.status_code == 429 else 5 * (attempt + 1))
+    if r is None:
+        assert last_exc is not None
+        raise last_exc  # never reached the server: let the caller (e.g. prefetch script) wait and retry
+    return r
+
+
+def store_and_log(r: requests.Response, *, url: str, path: Path, source: str, name: str) -> None:
+    """Crash-safe store: write <file>.part -> fsync -> log manifest row -> atomic rename.
+
+    A crash at any point leaves no partial file that looks like a valid cache entry:
+      * before the rename, only a *.part file exists (ignored by the cache; removed by the next fetch), and any
+        manifest row written points at a file that does not exist yet -> the next run re-fetches and logs a newer
+        row for the same URL (verify_raw checks the LATEST row per URL);
+      * os.replace is atomic on the same filesystem.
+    Transient failures (429/5xx) are logged but never cached, so a re-run fetches again."""
     transient = r.status_code == 429 or r.status_code >= 500
     row = {
         "fetched_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -101,12 +138,17 @@ def fetch(base: str, params: dict, *, source: str, name: str, refresh: bool = Fa
         "file": "" if transient else str(path.relative_to(ROOT)), "bytes": len(r.content),
         "sha256": hashlib.sha256(r.content).hexdigest(), "http_status": r.status_code,
     }
-    _log(row)  # transient failures are logged but NOT cached, so a re-run fetches again
     if transient:
+        _log(row)
         raise RuntimeError(f"HTTP {r.status_code} for {url}: {r.text[:200]}")
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(r.content)
-    return json.loads(r.content)
+    part = path.with_name(path.name + ".part")
+    with part.open("wb") as f:
+        f.write(r.content)
+        f.flush()
+        os.fsync(f.fileno())
+    _log(row)
+    os.replace(part, path)
 
 
 # ---- thin wrappers for the two sources -------------------------------------------------------

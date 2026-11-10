@@ -76,3 +76,8 @@ Throwaway probe outputs were in the session scratchpad, not the repo. The querie
 - Open-Meteo feature fetch for the 3 resorts, then the modelling table.
 - Group names in every notebook header; re-run 01b §3b; fresh-kernel run of all notebooks.
 - Slides and the revised proposal. See MS2_CHECKLIST.md.
+
+## 2026-11-10 — Session 3b: Open-Meteo feature download, robustness
+- The feature download was blocked by Open-Meteo's **hourly** limit, which notebook 01's run had exhausted. Trimmed ERA5 to 10 variables (D-027) to cut the cost from about 7,300 to about 6,000 calls.
+- Made collection disconnect- and crash-safe (D-028): atomic writes, network retries, an unattended prefetch that sleeps through rate limits, and a detached `nohup caffeinate` run. 37 tests pass.
+- Check progress with `tail data/prefetch_features.log`. Restart (safe at any time) with `caffeinate -i nohup uv run python scripts/prefetch_features.py >> data/prefetch_features.log 2>&1 &`.

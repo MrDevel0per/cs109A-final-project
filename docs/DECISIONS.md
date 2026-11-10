@@ -281,5 +281,27 @@ Our own data: density median 0.28, 99.9th percentile 0.70 (notebook 02).
 - GitHub: MrDevel0per (repo owner), mlehuray246, nxt-txms (collaborators).
 - The original proposal (Milestone 0) lists Tomer Burstein as author.
 
+## D-027 — Open-Meteo feature set: 10 ERA5 + 4 ERA5-Land daily variables
+**Status:** ACCEPTED · 2026-11-10
+**Context:** Open-Meteo's fair-use accounting charges about (variables ÷ 10) × (days ÷ 14) calls per request. Limits are about 5,000 per hour and 10,000 per day per client. With 14 ERA5 variables, the 4 resort stations × 1997–2026 would cost about 7,300 calls. Notebook 01 had already used about 5,000 that UTC day, so the fetch would have spilled into the next day.
+**Decision:**
+- **ERA5 (10):** temperature max/min/mean, precipitation_sum, snowfall_sum, sunshine_duration, wind_speed_10m_max, cloud_cover_mean, relative_humidity_2m_mean, pressure_msl_mean.
+- **ERA5-Land (4):** temperature mean/max/min, snow_depth_mean (used as a *feature* only).
+- **Window:** 1997-07-01 → 2026-06-30, at each station's lat/lon/elevation, `timezone=auto`, in 5-year chunks. Total cost ≈ 6,000 calls.
+**Dropped, as redundant or derivable:**
+- `daylight_duration`: deterministic from date and latitude; we compute it ourselves if needed.
+- `rain_sum`: ≈ precipitation − snowfall water equivalent.
+- `wind_gusts_10m_max`: ≈ max wind speed.
+- `shortwave_radiation_sum`: ≈ sunshine + cloud cover.
+**Not done:** spreading downloads across group members' machines or IPs to get around per-client limits. That would circumvent the provider's fair-use limits, so we wait for the limits to reset instead. Defined in `src/features.py`.
+
+## D-028 — Disconnect- and crash-safe data collection
+**Status:** ACCEPTED · 2026-11-10 (user: "make it robust to disconnects")
+- **Atomic, crash-safe writes.** `lineage.store_and_log` writes `<file>.part`, fsyncs it, appends and fsyncs the manifest row, then renames atomically. A crash never leaves a partial file that looks cached. A re-run re-fetches, and the newer manifest row supersedes the old one (`verify_raw` checks the latest row per URL).
+- **Network errors retried.** `lineage.get_with_retry` retries ConnectionError, Timeout and ChunkedEncodingError with back-off (10 s → 5 min). A minutely 429 is retried after 65 s. Hourly and daily 429s return immediately to the caller.
+- **Unattended prefetch.** `scripts/prefetch_features.py` is idempotent. It sleeps to the next hour or to 00:05 UTC on hourly/daily limits, waits 2 min on network loss and retries indefinitely, removes stale `.part` files, and writes UTC-timestamped progress to `data/prefetch_features.log`.
+- **Detached run.** It runs under `nohup` and `caffeinate -i`, so it survives the editor or Claude session closing and macOS idle sleep. Closing the lid still pauses it; it resumes on wake.
+- **Tested:** `tests/test_robustness.py` covers Wi-Fi drop then recovery, a persistent outage, the hourly limit, a crash before the rename, and re-running after a crash.
+
 ## Open questions for the group
 - None blocking as of 2026-11-10. D-002 and D-004 are still marked PROPOSED pending explicit group sign-off. D-026 is a proposed extension.
