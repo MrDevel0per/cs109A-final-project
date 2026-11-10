@@ -1,0 +1,12 @@
+# Python / env
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.DS_Store
+
+# Course materials (staff spec, staff comments, proposal PDF w/ email) — kept out of the PUBLIC repo (D-013)
+Original Proposal/
+
+# Agent-local settings
+.claude/
