@@ -81,3 +81,5 @@ Throwaway probe outputs were in the session scratchpad, not the repo. The querie
 - The feature download was blocked by Open-Meteo's **hourly** limit, which notebook 01's run had exhausted. Trimmed ERA5 to 10 variables (D-027) to cut the cost from about 7,300 to about 6,000 calls.
 - Made collection disconnect- and crash-safe (D-028): atomic writes, network retries, an unattended prefetch that sleeps through rate limits, and a detached `nohup caffeinate` run. 37 tests pass.
 - Check progress with `tail data/prefetch_features.log`. Restart (safe at any time) with `caffeinate -i nohup uv run python scripts/prefetch_features.py >> data/prefetch_features.log 2>&1 &`.
+- **Download complete (2026-11-10 01:12Z).** After one hourly-limit wait (00:50→01:02Z) it fetched all 4 stations (Kiln, Brumley, Brighton, Heavenly) in about 10 minutes. Each station has 10,592 days (1997-07-01 to 2026-06-30) × 14 variables and 0 NaN cells. That is 48 raw chunk files, 4.0 MB. `verify_raw`: 133 files, 0 problems. 37 tests pass. My estimate of a spill past the daily reset was too pessimistic.
+- Next: notebook 03 (modelling table, offline).

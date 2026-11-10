@@ -1,0 +1,7 @@
+2026-11-10T00:50:43Z start: 4 stations, models ['era5', 'era5_land'], 1997-07-01..2026-06-30
+2026-11-10T00:50:43Z hourly limit at 556:CO:SNTL; sleeping 11 min until 01:02Z
+2026-11-10T01:03:49Z OK 556:CO:SNTL Kiln: 10592 days x 14 vars, 1997-07-01..2026-06-30, NaN cells 0
+2026-11-10T01:06:41Z OK 369:CO:SNTL Brumley: 10592 days x 14 vars, 1997-07-01..2026-06-30, NaN cells 0
+2026-11-10T01:09:01Z OK 366:UT:SNTL Brighton: 10592 days x 14 vars, 1997-07-01..2026-06-30, NaN cells 0
+2026-11-10T01:12:34Z OK 518:CA:SNTL Heavenly Valley: 10592 days x 14 vars, 1997-07-01..2026-06-30, NaN cells 0
+2026-11-10T01:12:34Z DONE all stations
