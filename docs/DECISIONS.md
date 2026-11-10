@@ -417,3 +417,37 @@ A separate reviewer audited `src/modeltable.py`, its tests and notebook 03 for l
 ## Open questions for the group
 - None blocking as of 2026-11-10. D-002 and D-004 are still marked PROPOSED pending explicit group sign-off. D-026 is a proposed extension.
 - D-029 to D-037 (notebook 03) need group review. The most consequential are the split (D-032) and the baseline definitions (D-035).
+
+## D-038 — Audit proposal: causal model-input preprocessing and complete robustness coverage
+**Status:** PROPOSED · 2026-11-09 ET
+**Context:** Audit A-02 reproduces a prefix-invariance failure in D-022: whether a gap is filled depends on future missingness.
+Audit A-03 finds that replacing the three `rob_*` columns leaves revised depth peaks, SWE and station precipitation features in the robustness model.
+**Options:** (a) retain the retrospective cleaned inputs and restrict claims to that setting; (b) rebuild inputs using elapsed-gap-limited causal filling and originals for every retained SNOTEL feature; (c) use no input imputation and a reduced originals feature set.
+**Proposed choice:** (b), with (c) as the simpler fallback. Preserve the non-imputed target mask; test future missingness as well as future values.
+**Why/evidence:** a feature's presence is information too. The full and truncated `[5, NaN, NaN, 7]` example differs before the fourth day.
+The originals experiment must replace or omit every revised-input path, not just current depth and two changes. See CODE_AUDIT A-02/A-03 and DATA_SOURCES §8.
+**Effect:** would supersede D-022's gap-selection policy for model inputs if accepted. D-022 and existing numerical outputs are unchanged by this audit.
+
+## D-039 — Audit proposal: disclose test access and freeze an evaluation protocol
+**Status:** PROPOSED · 2026-11-09 ET
+**Context:** notebook 03 already plots, ranks and scores winters 2021–2026 while D-032 calls them touched once after choices are frozen.
+**Options:** (a) continue calling this an untouched test set; (b) keep the fixed calendar, disclose exploratory access and freeze future choices using development winters only; (c) collect future independent outcomes.
+**Proposed choice:** (b); (c) can be an optional future confirmation. Do not change year boundaries to pursue a better score.
+**Why/evidence:** proper baseline fitting excludes test years, but that does not undo prior inspection. Use exact common resort/date keys for model–baseline comparisons and report coverage.
+**Effect:** corrects the untouched-test claim in D-032 without changing its implemented split. See CODE_AUDIT A-01/A-04.
+
+## D-040 — Audit proposal: omit station precipitation windows from initial model predictors
+**Status:** PROPOSED · 2026-11-09 ET
+**Context:** `prcp_sum_7` and `prcp_sum_30` make every Aspen winter-2021 row incomplete; Open-Meteo precipitation windows are already available.
+**Options:** (a) drop incomplete rows; (b) add a fitted imputer; (c) omit the two redundant predictors, preserving their provenance columns.
+**Proposed choice:** (c). Keep baseline and model scores on identical eligible dates.
+**Why/evidence:** coverage alone motivates this simplification: Aspen complete rows rise from 3,747 to 3,977 across all splits, restoring all 181 winter-2021 rows and 49 validation rows. No test-error comparison was used to recommend it.
+**Effect:** proposed reduction of D-031's model feature list, not a change to the saved table. See CODE_AUDIT A-04 and DATA_SOURCES §8.
+
+## D-041 — Audit proposal: defer density reconstruction and keep the primary experiment compact
+**Status:** PROPOSED · 2026-11-09 ET
+**Context:** the Milestone 2 submission is unfinished; the primary measured-depth question can be answered with the existing records.
+**Options:** (a) add SWE→density reconstruction and a two-stage model now; (b) defer them and prioritize the required artifacts, ridge/random forest, baselines and availability checks.
+**Proposed choice:** (b). Retain any condition index as a clearly qualified secondary illustration, with no realized future-weather inputs.
+**Why/evidence:** D-026 adds another fitted model and synthetic training targets; audit A-01 to A-05 identify higher-value work. The staff conditions require seasonal averages and time-based evaluation, not density reconstruction.
+**Effect:** a scope recommendation for the proposed D-026 extension; no group decision is marked ACCEPTED here.

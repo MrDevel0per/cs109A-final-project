@@ -311,3 +311,100 @@ Full evidence is in `notebooks/03_modelling_table.ipynb`. Every number below is 
 | Heavenly | 3,082 | 725 | 1,087 |
 
 **Raw NRCS originals:** frequent multi-day glitches (e.g. Brighton 2023-11-23: 208 in on a 10 in day). In training winters 1998–2016, the causal QC (D-037) rejects 137 readings at Kiln and 293 at Brighton, with 0 wrong at either.
+
+## 8. Whole-project audit observations (2026-11-09 ET)
+
+These are local checks on the preserved data, not new API pulls. Starting commit:
+`419d753542206cacfc7660f722de9ea69a9d35e1`. Full interpretation and remedies: `CODE_AUDIT.md`.
+
+- `uv run pytest -q`: **64 passed**.
+- `uv run python src/verify_raw.py`: **135 cached files, 0 problems**.
+- Every notebook passed a separate fresh kernel with `SNOWPREDICT_OFFLINE=1`. Executing copies in order 01, 01b, 02, 03
+  reproduced all six files in `data/processed/` **byte for byte**. No numerical changes were made to the original outputs.
+- The cache contains **163,089,990 bytes** (163.09 decimal MB), 135 cached files and 142 manifest rows. The 20 daily SNOTEL
+  response files total **147,878,466 bytes**. Earlier notebook/checklist totals describe an earlier download state.
+- The clean table is **285,778 × 49**, and the model table is **14,319 × 61**, with **14,231** non-null labels and no duplicate resort/issue-date key.
+  Both data dictionaries match their saved tables. The cleaning log contains **40 entries**.
+- Omitting only `prcp_sum_7` and `prcp_sum_30` from complete-case eligibility restores **230 Aspen rows**: 181 in test winter 2021,
+  49 in validation winter 2020. Current complete cases include **zero** Aspen rows from winter 2021. Baselines currently include all 181.
+  This coverage check did not compare test prediction errors.
+- Post-fill, the full candidate table has **7** depth<SWE cases at SWE ≥1 in, **4** TMIN>TMAX cases, and **73** TAVG-outside-range cases
+  using a ±1 °F tolerance. All 7 depth<SWE cases have imputed SNWD and occur outside the final four stations.
+- “Measured” labels retain NRCS estimates: the label join includes **16 Aspen test station-days** flagged SNWD QC K and **6 Brighton
+  station-days** (4 train, 1 validation, 1 test). These are station-day counts, not necessarily unique composite dates. Heavenly has none.
+
+**Exact local query for these table/coverage findings** (run from the repository root):
+
+```bash
+uv run python - <<'PY'
+from pathlib import Path
+import pandas as pd
+import sys
+sys.path.insert(0, 'src')
+import sites
+
+c = pd.read_parquet('data/processed/snotel_clean.parquet')
+t = pd.read_parquet('data/processed/model_table.parquet')
+m = pd.read_csv('data/raw/MANIFEST.csv')
+cached = m[m.file.notna()].drop_duplicates('url', keep='last')
+daily = cached[cached.source.eq('snotel') & cached.name.str.startswith('daily_')]
+print('cache files, bytes, manifest rows, daily SNOTEL bytes:',
+      len(cached), cached.bytes.sum(), len(m), daily.bytes.sum())
+print('table shapes, labels, duplicate keys:', c.shape, t.shape,
+      t.y.notna().sum(), t.duplicated(['resort', 'issue_date']).sum())
+print('cleaning log entries:', len(pd.read_csv('data/processed/cleaning_log.csv')))
+excluded = {'issue_date', 'resort', 'target_date', 'y', 'y_measured', 'winter', 'split'}
+main = [x for x in t if x not in excluded and not x.startswith('rob_')]
+reduced = [x for x in main if x not in {'prcp_sum_7', 'prcp_sum_30'}]
+for r, cfg in sites.RESORTS.items():
+    g = t[t.resort.eq(r) & t.y_measured & t.snwd_t.notna()]
+    print(r, 'eligible/full/reduced:', len(g),
+          len(g.dropna(subset=main)), len(g.dropna(subset=reduced)))
+    if r == 'Aspen':
+        print(g.groupby(['split', 'winter']).apply(lambda d: pd.Series({
+            'eligible': len(d), 'full': len(d.dropna(subset=main)),
+            'reduced': len(d.dropna(subset=reduced))})))
+    j = c[c.station.isin(cfg['stations'])].merge(
+        t[t.resort.eq(r)][['target_date', 'split', 'y_measured']],
+        left_on='date', right_on='target_date')
+    print(r, 'K target station-days:',
+          j[j.y_measured & j.SNWD_nrcs_qc.eq('K')].groupby('split').size().to_dict())
+bad_depth = (c.SNWD_cm < c.WTEQ_cm) & (c.WTEQ_cm >= 2.54)
+print(c.loc[bad_depth, ['station', 'date', 'SNWD_cm', 'WTEQ_cm', 'SNWD_imputed']])
+print('physical violations:', bad_depth.sum(), (c.TMIN_C > c.TMAX_C).sum(),
+      ((c.TAVG_C < c.TMIN_C - 5/9) | (c.TAVG_C > c.TMAX_C + 5/9)).sum())
+PY
+```
+
+**Causality counterexample:** unlike the existing value-only perturbation test, this query truncates the series and changes future missingness.
+
+```bash
+uv run python - <<'PY'
+import sys
+sys.path.insert(0, 'src')
+import numpy as np
+import pandas as pd
+import clean
+
+def series(values):
+    i = pd.MultiIndex.from_product([['A'], pd.date_range('2020-01-01', periods=len(values))],
+                                   names=['station', 'date'])
+    return pd.Series(values, index=i, dtype=float)
+s = series([5, np.nan, np.nan, 7])
+print('full:', clean.ffill_short_gaps(s, 3)[0].tolist())
+print('prefix:', clean.ffill_short_gaps(s.iloc[:3], 3)[0].tolist())
+long_gap = series([5, np.nan, np.nan, np.nan, np.nan, 7])
+print('same past, different future missingness:',
+      clean.ffill_short_gaps(long_gap, 3)[0].iloc[:3].tolist())
+PY
+```
+
+Observed: `full = [5, 5, 5, 7]`; `prefix = [5, NaN, NaN]`; changing future missingness also gives `[5, NaN, NaN]` for the same past dates.
+This establishes a causality failure in gap *selection*, independent of the size of its effect on model errors. The latter has not been measured.
+
+**Current external documentation checked during the audit:**
+[Open-Meteo Historical Weather API](https://open-meteo.com/en/docs/historical-weather-api), data-source table and parameter definitions:
+both pinned reanalysis products have a five-day publication delay; daily output aggregates hourly values; snow depth is in meters, snowfall in cm,
+precipitation in mm and sunshine in seconds. The documented fixed-offset handling ignores DST changes inside a response. This supports the current
+unit conversions and notebook 03's cached standard-time interpretation; the older 01b/DATA_SOURCES §5 claim that these responses switch at DST is inaccurate.
+The primary target is still a station/composite observation, not resort-wide piste quality.
