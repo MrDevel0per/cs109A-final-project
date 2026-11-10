@@ -14,13 +14,13 @@ the same time of year?** CS1090A final project.
 
 ```bash
 uv sync                               # Python 3.12 environment from pyproject.toml / uv.lock
-uv run jupyter lab                    # open notebooks/
+uv run jupyter lab                    # open notebooks/snowpredict.ipynb
 uv run pytest -q                     # offline unit tests
 uv run python src/verify_raw.py       # check data/raw is byte-identical to what was downloaded
 ```
 
-The notebooks read cached raw data from `data/raw/`. Set `SNOWPREDICT_OFFLINE=1` to prevent downloads;
-notebooks 02 and 03 set this themselves. Run notebooks in order: 01, 01b, 02, then 03.
+The notebook reads cached raw data from `data/raw/` and runs offline by default (`SNOWPREDICT_OFFLINE=1`);
+set it to `0` to download any missing file. It runs top to bottom in about 10 seconds.
 The target is station-measured depth near each resort; it does not measure groomed piste conditions or skiing quality.
 
 ## Data lineage
@@ -40,7 +40,7 @@ Every external request goes through `src/lineage.py`, which:
 | `docs/LOG.md` | dated work log |
 | `docs/CODE_AUDIT.md` | correctness audit, requirement gaps, and recommended simplifications |
 | `AGENTS.md` | working rules for humans and AI assistants in this repo |
-| `notebooks/01_data_source_eda.ipynb` | reproduces every data-source check behind the decisions |
-| `notebooks/01b_source_verification.ipynb` | independent parser and date-alignment checks |
-| `notebooks/02_cleaning_snotel.ipynb` | cleaning, provenance, and the clean station table |
-| `notebooks/03_modelling_table.ipynb` | features, labels, winter split, and exploratory baselines |
+| `notebooks/snowpredict.ipynb` | the Milestone 2 notebook: getting, understanding and cleaning the data, the modelling table, the revised question |
+
+Docs written before 2026-11-10 cite "notebook 01 / 01b / 02 / 03"; those exploratory notebooks were merged into
+`snowpredict.ipynb` (D-042) and remain available at commit `eca1c57` (`git show eca1c57:notebooks/<name>.ipynb`).

@@ -154,3 +154,19 @@ Throwaway probe outputs were in the session scratchpad, not the repo. The querie
 - Milestone 2 submission work is the ordered data/cleaning notebook and revised question, slides PDF, and 1–2-page revised proposal PDF.
 - User requested committing and pushing all outstanding project changes. Publication includes the audit, evidence/decision/work logs, checklist,
   README correction and notebook 01b group header; numerical code and data are unchanged.
+
+## 2026-11-10 — Simplification: one notebook (D-042)
+**Done**
+- Merged notebooks 01, 01b, 02 and 03 into `notebooks/snowpredict.ipynb`, ordered as the Milestone 2 spec asks (get → understand → clean → modelling table → revised question). It runs offline in ~10 s and asserts raw-data integrity (`verify_raw`).
+- src: removed `lineage_text.py` and the manifest migration; `features.py` → `sources.py` (all request definitions); removed the partial `rob_*` robustness inputs; feature dictionary now in `modeltable.FEATURE_DOCS`. Tests updated (59 pass).
+- Baselines are now scored on validation winters only (D-039). The old `figures/03_*.png` were replaced by the notebook's new figures.
+- Kept the random-split demonstration in §4.4 (Owen): a random split flatters the same ridge model by 15–24 %.
+- Two independent adversarial reviews (code; notebook). No data or leakage defects found. Fixed: St. Anton best_match direction (warmer, not colder) and the boundary it hits (train/validation, 2017); "almost every gap is S" → about two-thirds; target-shape claim (only Heavenly is right-skewed); leakage-table caveat on gap selection; disclosed that cleaning thresholds used all winters (D-039); added training-winter feature ranges, the clean-table dictionary, an Open-Meteo column table; wrong D-021 citation → D-031; per-feature units and a safer placeholder substitution in `FEATURE_DOCS`; D-037 marked superseded.
+
+**Learned**
+- Verified against a snapshot of `data/processed/`: clean table byte-identical, modelling table identical apart from the dropped columns, all 40 cleaning counts identical.
+- At Aspen the `best_match` switch moves temperature by about 1 °C, not "several °C" (that was St. Anton). The notebook now says so.
+
+**Next**
+- D-042 accepted by Owen. Group review of D-029 to D-041. Slides and revised proposal PDFs. Older docs cite "notebook 0x §y", which refers to commit `eca1c57`.
+

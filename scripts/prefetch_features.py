@@ -1,4 +1,4 @@
-"""Warm the data/raw cache with Open-Meteo features for the modelling resorts (src/features.py defines the requests).
+"""Warm the data/raw cache with Open-Meteo features for the modelling resorts (src/sources.py defines the requests).
 
     caffeinate -i nohup uv run python scripts/prefetch_features.py >> data/prefetch_features.log 2>&1 &
 
@@ -15,9 +15,9 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-import features  # noqa: E402
 import lineage  # noqa: E402
 import sites  # noqa: E402
+import sources  # noqa: E402
 
 
 def say(msg: str) -> None:
@@ -34,17 +34,15 @@ for stale in lineage.RAW.rglob("*.part"):  # leftovers from a crash mid-write ar
     say(f"removing stale partial file {stale.name}")
     stale.unlink()
 
-meta = {s["stationTriplet"]: s for s in lineage.snotel(
-    "stations", {"stationTriplets": ",".join(sites.CANDIDATE_STATIONS), "returnStationElements": "true"},
-    name="stations_candidates_elements")}
+meta = {s["stationTriplet"]: s for s in sources.station_metadata()}
 stations = [t for r in sites.RESORTS.values() for t in r["stations"]]
-say(f"start: {len(stations)} stations, models {list(features.MODEL_VARS)}, {features.FEATURE_START}..{features.FEATURE_END}")
+say(f"start: {len(stations)} stations, models {list(sources.MODEL_VARS)}, {sources.FEATURE_START}..{sources.FEATURE_END}")
 
 for trip in stations:
     m = meta[trip]
     while True:
         try:
-            df = features.fetch_station(trip, m["latitude"], m["longitude"], m["elevation"] * 0.3048)
+            df = sources.fetch_station(trip, m["latitude"], m["longitude"], m["elevation"] * 0.3048)
             say(f"OK {trip} {m['name']}: {df.shape[0]} days x {df.shape[1]} vars, "
                 f"{df.index.min().date()}..{df.index.max().date()}, NaN cells {int(df.isna().sum().sum())}")
             break

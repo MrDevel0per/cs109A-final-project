@@ -5,6 +5,8 @@ Status key: ✅ done · 🟡 in progress · ⬜ todo · N/A not applicable. Audi
 
 **Group 37:** Nat Toms, Owen Cruz-Abrams, Martha le Huray.
 
+**Note (2026-11-10):** notebooks 01/01b/02/03 cited below were merged into `notebooks/snowpredict.ipynb` (D-042); originals at commit `eca1c57`.
+
 **Scope:** Milestone 2 requires getting, understanding and cleaning the data, an explicit revised question, the notebook, slides PDF and revised
 proposal PDF. Trained models are **not required**. The course specification assigns EDA and a baseline model to Milestone 3; final model training,
 tuning and robustness experiments below are later work.
@@ -14,7 +16,7 @@ tuning and robustness experiments below are later work.
 |---|---|---|---|
 | 8–10 min presentation + Q&A (25 min total), every member presents | — | ⬜ | Schedule with the TF. Split speaking time roughly equally |
 | Slides PDF, numbered, one point per slide, readable plots | `slides/` (to create) | ⬜ | |
-| Notebook (.ipynb) that gets, loads and cleans the data | `notebooks/01_data_source_eda.ipynb`, `01b_source_verification.ipynb`, `02_cleaning_snotel.ipynb`, `03_modelling_table.ipynb` | 🟡 | All four pass fresh-kernel offline execution and regenerate all six processed outputs byte-identically. Still choose the ordered submission notebook/package and add an explicit final revised-question cell |
+| Notebook (.ipynb) that gets, loads and cleans the data | `notebooks/snowpredict.ipynb` | ✅ | One notebook (D-042), in the spec's order, runs offline top to bottom; explicit revised-question cell in §5. Re-run before submitting |
 | Revised proposal PDF, 1–2 pages | `docs/` (to create) | ⬜ | |
 | One member uploads all three to Canvas | — | ⬜ | |
 
@@ -28,7 +30,7 @@ tuning and robustness experiments below are later work.
 | What each column represents | 02 + `data/processed/snotel_clean_columns.csv` | ✅ | Data dictionary |
 | Shape, dtypes, summary stats (mean/min/max) | 02 | ✅ | 285,778 × 49 |
 | Cleaning steps, each with a reason | 02 + `data/processed/cleaning_log.csv` | ✅ | 40 log entries including calendar completion and unit conversion (D-016 to D-025) |
-| Revised project question, stated so it is answerable | 03 §11 / revised proposal (missing) | 🟡 | Proposed wording below; add an explicit final question cell to the submission notebook |
+| Revised project question, stated so it is answerable | notebook §5 / revised proposal (missing) | 🟡 | In the notebook (§5); still needed in the revised proposal PDF |
 | A few labelled plots (response distribution, missingness) | 01, 02 | ✅ | Coverage heatmaps, validation, missingness heatmap, spikes before/after, target distribution |
 
 ### Proposed revised question

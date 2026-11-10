@@ -3,11 +3,11 @@ issue_date,label,—,issue date t (forecast made at end of day t),date
 resort,label,—,resort (src/sites.py RESORTS),
 target_date,label,—,t + 30 days (always Nov 1 – Apr 30),date
 y,target,SNOTEL,snow depth at target_date (Aspen: Kiln+Brumley composite),cm
-y_measured,target,SNOTEL,"True if y is measured (not imputed, all members present) — ONLY these rows are labels/truth",bool
+y_measured,target,SNOTEL,"True if y is measured (not imputed, all members present): ONLY these rows are labels/truth",bool
 winter,label,—,season-end year of target_date (== that of issue_date),
-split,label,—,train (≤2016) / val (2017–2020) / test (2021–2026) — D-032,
+split,label,—,"train (≤2016) / val (2017–2020) / test (2021–2026), D-032",
 dowy,calendar,—,"days since Oct 1 of the water year, at issue date t",d
-target_dowy,calendar,—,dowy + 30 (the target's day of season; known in advance),d
+target_dowy,calendar,—,dowy + 30 (the target's day of season; used to look up climatology),d
 doy_sin,calendar,—,sin/cos of 2π·day-of-year/365.25,—
 doy_cos,calendar,—,sin/cos of 2π·day-of-year/365.25,—
 snwd_t,snow state,SNOTEL,snow depth at end of day t (cleaned; ≤3-day causal fill allowed),cm
@@ -19,44 +19,41 @@ prcp_sum_7,snow state,SNOTEL,"station precipitation, sum over t−7+1..t (strict
 d_snwd_30,snow state,SNOTEL,snwd_t − snwd_(t−30),cm
 d_wteq_30,snow state,SNOTEL,wteq_t − wteq_(t−30),cm
 prcp_sum_30,snow state,SNOTEL,"station precipitation, sum over t−30+1..t (strict)",mm
-snwd_peak_wy,snow state,SNOTEL,max snow depth from Oct 1 to t,cm
-wteq_peak_wy,snow state,SNOTEL,max SWE from Oct 1 to t,cm
+snwd_peak_wy,snow state,SNOTEL,season maximum from Oct 1 to t,cm
+wteq_peak_wy,snow state,SNOTEL,season maximum from Oct 1 to t,cm
 tmax_t,"weather, day t",ERA5,day-t temperature,°C
 tmin_t,"weather, day t",ERA5,day-t temperature,°C
 tmean_t,"weather, day t",ERA5,day-t temperature,°C
-snowfall_t,"weather, day t",ERA5,"day-t snowfall (precip partitioned as snow, 0.7 cm/mm)",cm
+snowfall_t,"weather, day t",ERA5,day-t snowfall,cm
 precip_t,"weather, day t",ERA5,day-t precipitation,mm
-precip_sum_7,"weather, trailing",ERA5,sum over t−7+1..t,mm / cm / h
-snowfall_sum_7,"weather, trailing",ERA5,sum over t−7+1..t,mm / cm / h
-sun_h_sum_7,"weather, trailing",ERA5,sum over t−7+1..t,mm / cm / h
+precip_sum_7,"weather, trailing",ERA5,"precipitation, sum over t−7+1..t",mm
+snowfall_sum_7,"weather, trailing",ERA5,"snowfall, sum over t−7+1..t",cm
+sun_h_sum_7,"weather, trailing",ERA5,"sunshine hours, sum over t−7+1..t",h
 pdd_sum_7,"weather, trailing",ERA5,"positive degree-days Σ max(tmean, 0) over t−7+1..t (melt proxy)",°C·d
-tmean_mean_7,"weather, trailing",ERA5,mean over t−7+1..t,°C / km/h / % / hPa
-tmax_mean_7,"weather, trailing",ERA5,mean over t−7+1..t,°C / km/h / % / hPa
-tmin_mean_7,"weather, trailing",ERA5,mean over t−7+1..t,°C / km/h / % / hPa
-wind_max_mean_7,"weather, trailing",ERA5,mean over t−7+1..t,°C / km/h / % / hPa
-cloud_mean_7,"weather, trailing",ERA5,mean over t−7+1..t,°C / km/h / % / hPa
-rh_mean_7,"weather, trailing",ERA5,mean over t−7+1..t,°C / km/h / % / hPa
-pmsl_mean_7,"weather, trailing",ERA5,mean over t−7+1..t,°C / km/h / % / hPa
-precip_sum_30,"weather, trailing",ERA5,sum over t−30+1..t,mm / cm / h
-snowfall_sum_30,"weather, trailing",ERA5,sum over t−30+1..t,mm / cm / h
-sun_h_sum_30,"weather, trailing",ERA5,sum over t−30+1..t,mm / cm / h
+tmean_mean_7,"weather, trailing",ERA5,"temperature, mean over t−7+1..t",°C
+tmax_mean_7,"weather, trailing",ERA5,"temperature, mean over t−7+1..t",°C
+tmin_mean_7,"weather, trailing",ERA5,"temperature, mean over t−7+1..t",°C
+wind_max_mean_7,"weather, trailing",ERA5,"daily max wind, mean over t−7+1..t",km/h
+cloud_mean_7,"weather, trailing",ERA5,"cloud cover / relative humidity, mean over t−7+1..t",%
+rh_mean_7,"weather, trailing",ERA5,"cloud cover / relative humidity, mean over t−7+1..t",%
+pmsl_mean_7,"weather, trailing",ERA5,"sea-level pressure, mean over t−7+1..t",hPa
+precip_sum_30,"weather, trailing",ERA5,"precipitation, sum over t−30+1..t",mm
+snowfall_sum_30,"weather, trailing",ERA5,"snowfall, sum over t−30+1..t",cm
+sun_h_sum_30,"weather, trailing",ERA5,"sunshine hours, sum over t−30+1..t",h
 pdd_sum_30,"weather, trailing",ERA5,"positive degree-days Σ max(tmean, 0) over t−30+1..t (melt proxy)",°C·d
-tmean_mean_30,"weather, trailing",ERA5,mean over t−30+1..t,°C / km/h / % / hPa
-tmax_mean_30,"weather, trailing",ERA5,mean over t−30+1..t,°C / km/h / % / hPa
-tmin_mean_30,"weather, trailing",ERA5,mean over t−30+1..t,°C / km/h / % / hPa
-wind_max_mean_30,"weather, trailing",ERA5,mean over t−30+1..t,°C / km/h / % / hPa
-cloud_mean_30,"weather, trailing",ERA5,mean over t−30+1..t,°C / km/h / % / hPa
-rh_mean_30,"weather, trailing",ERA5,mean over t−30+1..t,°C / km/h / % / hPa
-pmsl_mean_30,"weather, trailing",ERA5,mean over t−30+1..t,°C / km/h / % / hPa
+tmean_mean_30,"weather, trailing",ERA5,"temperature, mean over t−30+1..t",°C
+tmax_mean_30,"weather, trailing",ERA5,"temperature, mean over t−30+1..t",°C
+tmin_mean_30,"weather, trailing",ERA5,"temperature, mean over t−30+1..t",°C
+wind_max_mean_30,"weather, trailing",ERA5,"daily max wind, mean over t−30+1..t",km/h
+cloud_mean_30,"weather, trailing",ERA5,"cloud cover / relative humidity, mean over t−30+1..t",%
+rh_mean_30,"weather, trailing",ERA5,"cloud cover / relative humidity, mean over t−30+1..t",%
+pmsl_mean_30,"weather, trailing",ERA5,"sea-level pressure, mean over t−30+1..t",hPa
 pmsl_t,"weather, day t",ERA5,day-t mean sea-level pressure,hPa
 d_pmsl_3,"weather, day t",ERA5,pressure tendency pmsl_t − pmsl_(t−3),hPa
-snowfall_wy,"weather, season-to-date",ERA5,running total from Oct 1 to t,cm / mm / °C·d
-precip_wy,"weather, season-to-date",ERA5,running total from Oct 1 to t,cm / mm / °C·d
-pdd_wy,"weather, season-to-date",ERA5,running total from Oct 1 to t,cm / mm / °C·d
+snowfall_wy,"weather, season-to-date",ERA5,"snowfall, running total from Oct 1 to t",cm
+precip_wy,"weather, season-to-date",ERA5,"precipitation, running total from Oct 1 to t",mm
+pdd_wy,"weather, season-to-date",ERA5,"positive degree-days, running total from Oct 1 to t",°C·d
 land_sd_t,reanalysis snow,ERA5-Land,"modelled snow depth on day t (feature only, never truth)",cm
 d_land_sd_7,reanalysis snow,ERA5-Land,land_sd_t − land_sd_(t−7),cm
 d_land_sd_30,reanalysis snow,ERA5-Land,land_sd_t − land_sd_(t−30),cm
 land_tmean_mean_7,reanalysis snow,ERA5-Land,7-day mean ERA5-Land temperature (0.1° grid),°C
-rob_snwd_t,robustness (D-024),SNOTEL original,"snwd_t from NRCS ORIGINAL (pre-edit) readings; causal QC only (bounds, D-020 negatives, recursive trailing spike rule)",cm
-rob_d_snwd_7,robustness (D-024),SNOTEL original,change in original readings over 7 days,cm
-rob_d_snwd_30,robustness (D-024),SNOTEL original,change in original readings over 30 days,cm

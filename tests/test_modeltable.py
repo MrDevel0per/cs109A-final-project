@@ -25,9 +25,8 @@ def synthetic_daily(start="2000-07-01", end="2004-06-30", seed=0, gaps=True) -> 
     d["snwd"] = np.abs(rng.normal(80, 30, n))
     d["wteq"] = d["snwd"] * 0.3
     d["prcp"] = np.abs(rng.normal(2, 1, n))
-    d["snwd_orig"] = d["snwd"] + rng.normal(0, 1, n)
     if gaps:                                         # realistic NaN gaps in SNOTEL columns
-        for c in ["snwd", "wteq", "prcp", "snwd_orig"]:
+        for c in ["snwd", "wteq", "prcp"]:
             d.loc[d.sample(frac=0.03, random_state=seed).index, c] = np.nan
     d["snwd_imputed"] = False
     d["snwd_measured"] = d["snwd"].notna()
@@ -57,7 +56,7 @@ def test_features_invariant_to_future_perturbation(t):
     d2 = d.copy()
     future = d2.index > pd.Timestamp(t)
     rng = np.random.default_rng(42)
-    for c in WEATHER + ["snwd", "wteq", "prcp", "snwd_orig"]:
+    for c in WEATHER + ["snwd", "wteq", "prcp"]:
         d2.loc[future, c] = rng.normal(500, 100, future.sum())     # wildly different future
     a, b = mt.build_features(d).loc[:t], mt.build_features(d2).loc[:t]
     for c in a.columns:
@@ -165,47 +164,15 @@ def test_composite_requires_all_members():
                           ("B", [30, 40, 50, np.nan], [False, False, False, False])]:
         for dt, v, i in zip(idx, vals, imp):
             rows.append({"station": st, "date": dt, "SNWD_cm": v, "WTEQ_cm": v, "PRCP_mm": 1.0,
-                         "SNWD_imputed": i, "SNWD_nrcs_orig": v / 2.54 if v == v else np.nan})
+                         "SNWD_imputed": i})
     r = mt.resort_snotel(pd.DataFrame(rows), ["A", "B"])
     assert r.snwd.tolist()[:2] == [20.0, 30.0] and r.snwd.iloc[2:].isna().all()
     assert r.snwd_measured.tolist() == [True, False, False, False]      # day 2 has an imputed member
-    assert np.allclose(r.snwd_orig.iloc[:2], [20.0, 30.0])
 
 
-def test_orig_same_day_guard():
-    idx = pd.date_range("2005-01-01", periods=4, freq="D")
-    rows = [{"station": "A", "date": dt, "SNWD_cm": 0.0, "WTEQ_cm": 0.0, "PRCP_mm": 0.0, "SNWD_imputed": False,
-             "SNWD_nrcs_orig": o} for dt, o in zip(idx, [-1.0, -8190.0, 10.0, 999.0])]
-    r = mt.resort_snotel(pd.DataFrame(rows), ["A"])
-    assert r.snwd_orig.iloc[0] == 0.0 and np.isnan(r.snwd_orig.iloc[1]) and np.isclose(r.snwd_orig.iloc[2], 25.4)
-    assert np.isnan(r.snwd_orig.iloc[3])
-
-
-def _orig_rows(vals):
-    idx = pd.date_range("2005-01-01", periods=len(vals), freq="D")
-    return pd.DataFrame([{"station": "A", "date": dt, "SNWD_cm": 0.0, "WTEQ_cm": 0.0, "PRCP_mm": 0.0,
-                          "SNWD_imputed": False, "SNWD_nrcs_orig": o} for dt, o in zip(idx, vals)])
-
-
-def test_orig_causal_spike_rule():
-    vals = [10.0] * 8 + [208.0] + [11.0] * 5            # one glitch on day 8
-    r = mt.resort_snotel(_orig_rows(vals), ["A"])
-    assert np.isnan(r.snwd_orig.iloc[8]) and r.snwd_orig.drop(r.index[8]).notna().all()
-    for n in (4, 10, 25):                                # glitches persisting 4, 10, 25 days are all rejected
-        vals = [10.0] * 8 + [208.0] * n + [11.0] * 10
-        r = mt.resort_snotel(_orig_rows(vals), ["A"])
-        assert r.snwd_orig.iloc[8:8 + n].isna().all() and r.snwd_orig.iloc[8 + n:].notna().all(), n
-
-
-def test_orig_spike_filter_reanchors_after_long_gap():
-    s = pd.Series([10.0] * 5 + [np.nan] * 40 + [80.0] * 5)   # new level after a 40-day gap is accepted
-    assert mt.causal_spike_filter(s).iloc[45:].notna().all()
-
-
-def test_orig_cleaning_is_causal():
-    rng = np.random.default_rng(3)
-    vals = list(np.abs(rng.normal(40, 5, 60)))
-    base = mt.resort_snotel(_orig_rows(vals), ["A"]).snwd_orig
-    vals2 = vals[:30] + list(rng.normal(300, 50, 30))     # garbage after day 29
-    pert = mt.resort_snotel(_orig_rows(vals2), ["A"]).snwd_orig
-    assert frames_equal(base.iloc[:30], pert.iloc[:30])
+def test_every_feature_is_documented():
+    cols = mt.build_features(synthetic_daily()).columns
+    dd = mt.feature_dictionary(cols)
+    assert list(dd.column) == list(cols) and dd.definition.str.len().gt(0).all()
+    with pytest.raises(KeyError):
+        mt.feature_dictionary(["undocumented_feature"])

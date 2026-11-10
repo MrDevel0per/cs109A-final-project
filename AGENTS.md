@@ -53,7 +53,7 @@ We must be able to justify every choice in the presentation and the revised prop
 - Leakage: features for a prediction made on date *t* may use only data dated ≤ *t*. Climatology may use only training seasons.
 
 - **SNOTEL is always fetched with `returnFlags=true`, `returnOriginalValues=true`, `returnSuspectData=true`, and `periodRef=END` stated explicitly** (D-009). Never request NRCS normals (`centralTendencyType`) (D-010).
-- All external data goes through `src/lineage.py::fetch()` (D-011). Never use ad-hoc `requests.get` in notebooks. Text/CSV responses go through `src/lineage_text.py`. Downstream notebooks (cleaning, modelling) run with `SNOWPREDICT_OFFLINE=1`, so they can only use logged raw data.
+- All external data goes through `src/lineage.py::fetch()` (D-011). Never use ad-hoc `requests.get` in notebooks. Production requests are defined once in `src/sources.py`. The notebook runs with `SNOWPREDICT_OFFLINE=1` by default, so it can only use logged raw data.
 - **Imputation must be causal** (D-022): only forward-fill short interior gaps, never interpolate using later values. Any new imputation needs a causality unit test.
 - **The split is by winter: train ≤ 2016, validation 2017–2020, test 2021–2026 (D-032).** Touch the test winters once, at the end. CV folds are whole winters (D-033).
 - **Evaluation uses measured, non-imputed SNWD only.** Imputed rows (`SNWD_imputed`) and any reconstructed depth (D-026) are never evaluation truth.
@@ -64,16 +64,17 @@ We must be able to justify every choice in the presentation and the revised prop
 
 ```bash
 uv sync                 # installs from pyproject.toml / uv.lock (Python 3.12)
-uv run jupyter lab
-uv run pytest -q                      # offline unit tests (lineage, parse, clean)
+uv run jupyter lab                    # open notebooks/snowpredict.ipynb (the one Milestone 2 notebook)
+uv run pytest -q                      # offline unit tests (lineage, parse, clean, modeltable)
 uv run python src/verify_raw.py       # raw-data integrity vs MANIFEST sha256
 ```
 Notebooks import from `src/` by adding `../src` to `sys.path`.
 
-- `src/lineage.py` — `fetch()`, `open_meteo()`, `snotel()`, and `manifest()`. These cache raw responses and log every fetch to `data/raw/MANIFEST.csv`.
+- `src/lineage.py` — HOW we download: `fetch()`, `open_meteo()`, `snotel()`, and `manifest()`. These cache raw responses and log every fetch to `data/raw/MANIFEST.csv`.
+- `src/sources.py` — WHAT we download: station metadata, SNOTEL daily data (D-009 parameters) and the Open-Meteo feature requests (D-027).
 - `src/sites.py` — the single source of truth for ski areas, candidate SNOTEL stations, the final `RESORTS`, elements, and the date range. Log any change to it in DECISIONS.md.
-- `src/parse.py` — raw JSON → tidy tables (no cleaning). `src/clean.py` — pure cleaning functions used by notebook 02.
-- `src/features.py` — the Open-Meteo feature requests (D-027). `src/modeltable.py` — resort series, causal features, labels (the ONLY look-ahead), climatology and the split (D-029 to D-037). Its leakage guarantees are tested in `tests/test_modeltable.py`; keep them passing.
+- `src/parse.py` — raw JSON → tidy tables (no cleaning). `src/clean.py` — pure cleaning functions used by the notebook's §3.
+- `src/modeltable.py` — resort series, causal features and their data dictionary (`FEATURE_DOCS`), labels (the ONLY look-ahead), climatology and the split (D-029 to D-035). Its leakage guarantees are tested in `tests/test_modeltable.py`; keep them passing.
 - `src/verify_raw.py` — checks every raw file's sha256 against the manifest and flags orphan files.
 - `docs/MS2_CHECKLIST.md` — every Milestone 2 requirement, where it is addressed, and its status. Keep it current.
 
@@ -82,13 +83,13 @@ Notebooks import from `src/` by adding `../src` to `sys.path`.
 ```
 Original Proposal/   original proposal, milestone spec, staff comments (read-only; not in public repo, D-013)
 docs/                DECISIONS.md, DATA_SOURCES.md, LOG.md, MS2_CHECKLIST.md
-src/                 lineage.py, lineage_text.py (fetch + manifest), sites.py, parse.py, clean.py, features.py, modeltable.py, verify_raw.py
+src/                 lineage.py (fetch + manifest), sources.py (request definitions), sites.py, parse.py, clean.py, modeltable.py, verify_raw.py
 tests/               pytest, offline
 data/raw/            untouched API pulls + MANIFEST.csv
 data/processed/      snotel_clean.parquet, cleaning_log.csv, snotel_clean_columns.csv,
                      model_table.parquet, model_table_columns.csv, baseline_scores.csv
-figures/             PNGs saved by notebooks for the slides (03_*.png)
+figures/             PNGs saved by the notebook for the slides
 scripts/             prefetch_features.py (unattended, resumable Open-Meteo download)
-notebooks/           01_data_source_eda, 01b_source_verification, 02_cleaning_snotel, 03_modelling_table
+notebooks/           snowpredict.ipynb — the single notebook (D-042). The earlier notebooks 01/01b/02/03 cited in docs are at commit eca1c57
 pyproject.toml, uv.lock   uv environment
 ```

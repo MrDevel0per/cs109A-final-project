@@ -386,7 +386,7 @@ Our own data: density median 0.28, 99.9th percentile 0.70 (notebook 02).
 **Decision:** accept and record the cells (notebook 03 §2.1 table). Any future request passes `cell_selection=land` explicitly. Existing requests are not re-issued, because that would cost about 6,000 calls and change nothing.
 
 ## D-037 — Causal QC for NRCS original readings (D-024 robustness inputs)
-**Status:** PROPOSED · 2026-11-10 (notebook 03 §9; `modeltable.causal_spike_filter`)
+**Status:** SUPERSEDED by D-042 (code removed; the Milestone 3 robustness run follows D-038) · 2026-11-10 (notebook 03 §9; `modeltable.causal_spike_filter`)
 **Context:** raw NRCS readings contain frequent, often multi-day, sensor glitches (e.g. Brighton 208 in on a 10 in day, 2023-11-23). Kiln has 447 such days since 1998. Notebook 02's spike rule uses a centred window, so it cannot be used for a real-time input.
 **Options:**
 1. Bounds only: glitches pass through.
@@ -451,3 +451,18 @@ The originals experiment must replace or omit every revised-input path, not just
 **Proposed choice:** (b). Retain any condition index as a clearly qualified secondary illustration, with no realized future-weather inputs.
 **Why/evidence:** D-026 adds another fitted model and synthetic training targets; audit A-01 to A-05 identify higher-value work. The staff conditions require seasonal averages and time-based evaluation, not density reconstruction.
 **Effect:** a scope recommendation for the proposed D-026 extension; no group decision is marked ACCEPTED here.
+
+## D-042 — One submission notebook; simpler code; deferred robustness inputs; validation-only baselines
+**Status:** ACCEPTED · 2026-11-10 (Owen: "LGTM"; asked for simplicity and readability as absolute priorities)
+**Context:** the Milestone 2 spec asks for one notebook that gets, understands and cleans the data, then states the question. We had four
+(01, 01b, 02, 03; ~200 cells), much of it exploration whose findings are already recorded here and in DATA_SOURCES.md. Audit A-05 asked for one
+ordered submission notebook; A-01 for no further test-winter scoring; A-03 found the `rob_*` robustness inputs incomplete.
+**Options:** (a) submit all four; (b) concatenate them; (c) one new notebook with only what the spec asks for, citing docs for the rest.
+**Decision:** (c), `notebooks/snowpredict.ipynb` (70 cells, runs offline in ~10 s). Alongside it:
+- Kept: the source checks behind key decisions (`best_match` break, `elevation=` effect, snow-depth coverage), every SNOTEL cleaning rule (D-016 to D-023, unchanged), the Open-Meteo checks, missingness, target distribution, scale, leakage, the modelling table, the split, and an explicit revised-question cell.
+- Dropped from the notebook (evidence stays at commit `eca1c57` and in DATA_SOURCES.md): model-by-model probes, other-API probes, the ERA5-Land validation and lag tables, the 01b parser/aggregation cross-checks, the Open-Meteo grid-cell, homogeneity and agreement tables, feature-correlation EDA, and the originals calibration. The random-split demonstration was kept (§4.4, Owen): a random split flatters the same ridge model by 15–24 %.
+- Baselines are scored on **validation winters only** (fitted on train); the test winters are no longer scored or plotted (D-039).
+- The `rob_*` columns and `modeltable.causal_spike_filter` are removed. D-024's robustness run is still required in Milestone 3 and must rebuild *every* SNOTEL feature from originals (D-038), so the three partial columns were not reusable (D-037 is not adopted for now).
+- Code: `src/lineage_text.py` (only used by 01b) and the one-time manifest migration were removed; `src/features.py` became `src/sources.py`, the single definition of every production request (the SNOTEL request had been copied in three notebooks); the feature data dictionary moved next to `build_features` (`modeltable.FEATURE_DOCS`, with a test that every feature is documented).
+**Evidence of no numerical change:** `snotel_clean.parquet` is byte-identical; `model_table.parquet` is identical except for the 3 dropped `rob_*` columns (14,319 × 58); all 40 cleaning-log counts are identical; the validation baseline scores equal the old notebook's. 59 tests pass.
+

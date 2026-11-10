@@ -34,8 +34,6 @@ MANIFEST_COLS = ["fetched_utc", "source", "name", "url", "file", "bytes", "sha25
 USER_AGENT = (f"SnowPredict/0.2 (automated data collection for a Harvard CS1090A student final project; "
               f"non-commercial; contact: https://github.com/MrDevel0per/cs109A-final-project) "
               f"python-requests/{requests.__version__}")
-# The UA used for requests made before 2026-11-10 (rows logged before the user_agent column existed).
-LEGACY_USER_AGENT = "snowpredict-course-project/0.1 (DataSci1 final project)"
 
 
 def canonical_url(base: str, params: dict) -> str:
@@ -44,25 +42,7 @@ def canonical_url(base: str, params: dict) -> str:
     return f"{base}?{urlencode(sorted(flat.items()), safe=',:*')}"
 
 
-def _migrate_manifest() -> None:
-    """Add columns introduced after the manifest was created, back-filling known values (never guessing)."""
-    if not MANIFEST.exists():
-        return
-    with MANIFEST.open(newline="") as f:
-        rows = list(csv.DictReader(f))
-        header = rows and list(rows[0].keys()) or []
-    if "user_agent" in header or not rows:
-        return
-    for r in rows:
-        r["user_agent"] = LEGACY_USER_AGENT
-    with MANIFEST.open("w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=MANIFEST_COLS)
-        w.writeheader()
-        w.writerows(rows)
-
-
 def _log(row: dict) -> None:
-    _migrate_manifest()
     row = {**row, "user_agent": USER_AGENT}
     new = not MANIFEST.exists()
     MANIFEST.parent.mkdir(parents=True, exist_ok=True)
@@ -84,7 +64,7 @@ def fetch(base: str, params: dict, *, source: str, name: str, refresh: bool = Fa
     if path.exists() and not refresh:
         return json.loads(path.read_bytes())
     if os.environ.get("SNOWPREDICT_OFFLINE") == "1":
-        # Downstream notebooks (cleaning, modelling) set this so they can ONLY use logged raw data.
+        # The notebook sets this by default, so it can ONLY use logged raw data.
         raise FileNotFoundError(f"offline mode: {name} not in data/raw cache (url: {url})")
 
     r = get_with_retry(url, retries=retries, pause=pause)

@@ -3,9 +3,9 @@
 Leakage contract (enforced by tests/test_modeltable.py):
   * every FEATURE dated t is a function of rows dated <= t of the (already cleaned) resort frame: trailing windows,
     backward differences, cumulative sums/maxima within the water year. Given those inputs, data after t can change
-    nothing in a feature row; this is tested by truncating and by perturbing the future. Upstream cleaning steps that
-    use later information (NRCS edits/S-flags, which <=3-day gaps get filled) are quantified in notebook 03 §4.3 and
-    covered by the D-024 robustness inputs (rob_* columns);
+    nothing in a feature row; this is tested by truncating and by perturbing the future. Upstream steps that use later
+    information (NRCS's after-the-fact edits, which <=3-day gaps get filled) are listed in the notebook's leakage
+    section (D-024, CODE_AUDIT A-02/A-03);
   * the ONLY forward-looking operation in the project is `labels()`, which looks up the target at t + HORIZON;
   * the only fitted object here is `climatology()`, which takes an explicit list of winters and ignores all others.
 
@@ -14,6 +14,8 @@ day aggregates (timezone=auto). Weather dated d pairs with SNWD dated d, so on i
 weather through day t and the end-of-day-t snow reading.
 """
 from __future__ import annotations
+
+import re
 
 import numpy as np
 import pandas as pd
@@ -39,17 +41,6 @@ OM_RENAME = {
     "era5_land__temperature_2m_min": ("land_tmin", 1.0),
     "era5_land__snow_depth_mean": ("land_sd", 100.0),                                                 # m -> cm
 }
-# Raw NRCS originals (D-024 robustness) get only SAME-DAY rules, so they stay causal: D-020's negative-depth rule
-# ([-4, 0) in -> 0; < -4 in -> NaN; sentinels such as -8190 in exist) and an upper physical bound.
-ORIG_NEG_TOL_IN, ORIG_MAX_IN = 4.0, 400.0
-# ...plus a CAUSAL spike rule. D-017 itself uses a centred window (needs t+1..t+3), so for originals we compare each reading
-# with the median of the last 7 ACCEPTED readings (whenever they were); > 40 in away -> rejected. Raw readings contain
-# sensor glitches (e.g. Brighton 208 in on a 10 in day) lasting days, which a plain trailing median would adopt. If no
-# reading has been accepted for ORIG_REANCHOR_DAYS (a long gap, or a genuine level change), the next reading re-anchors.
-# Threshold calibrated on TRAINING winters only (notebook 03 §9).
-ORIG_SPIKE_IN, ORIG_SPIKE_WINDOW, ORIG_REANCHOR_DAYS = 40.0, 7, 30
-
-
 # ---------------------------------------------------------------------------------------------------------------
 # resort-level daily series
 # ---------------------------------------------------------------------------------------------------------------
@@ -59,36 +50,12 @@ def _daily_index(frames: list[pd.Series | pd.DataFrame]) -> pd.DatetimeIndex:
     return pd.date_range(lo, hi, freq="D", name="date")
 
 
-def causal_spike_filter(s: pd.Series, window: int = ORIG_SPIKE_WINDOW, threshold: float = ORIG_SPIKE_IN,
-                        reanchor_days: int = ORIG_REANCHOR_DAYS) -> pd.Series:
-    """Reject s[t] if it differs by > threshold from the median of the last `window` ACCEPTED values (needs >= 2).
-    If the last accepted value is more than `reanchor_days` positions back, s[t] is accepted and starts a new reference.
-    Recursive and backward-looking only: the decision for day t never uses data after t.
-    Known limits: a glitch lasting > reanchor_days is eventually adopted; a reading in the first 2 days of a record or
-    after a re-anchor becomes the reference unchecked."""
-    v = s.to_numpy(dtype=float)
-    acc = np.full(len(v), np.nan)
-    kept: list[int] = []
-    for i, x in enumerate(v):
-        if np.isnan(x):
-            continue
-        if kept and i - kept[-1] > reanchor_days:
-            kept = []
-        ref = acc[kept[-window:]]
-        if len(ref) >= 2 and abs(x - np.median(ref)) > threshold:
-            continue
-        acc[i] = x
-        kept.append(i)
-    return pd.Series(acc, index=s.index, name=s.name)
-
-
 def resort_snotel(clean: pd.DataFrame, stations: list[str]) -> pd.DataFrame:
-    """Resort-level daily SNOTEL series from the clean table (notebook 02).
+    """Resort-level daily SNOTEL series from the clean table (notebook §3).
 
     Fixed-membership composite (D-008): the value is the mean over member stations on days when ALL members have a
     value, else NaN, so the composite never silently changes composition. `snwd_measured` is True only if every
     member's SNWD is present and NOT imputed (D-022): only such days may be labels or evaluation truth.
-    `snwd_orig` uses NRCS's original (pre-edit) readings for the D-024 robustness run, with a physical-bounds guard.
     """
     per = {}
     for t in stations:
@@ -110,18 +77,12 @@ def resort_snotel(clean: pd.DataFrame, stations: list[str]) -> pd.DataFrame:
     imp = pd.concat([per[t]["SNWD_imputed"].fillna(False).astype(bool) for t in stations], axis=1).any(axis=1)
     out["snwd_imputed"] = imp & out.snwd.notna()
     out["snwd_measured"] = out.snwd.notna() & ~imp
-    for t in stations:
-        o = per[t]["SNWD_nrcs_orig"].astype(float)                   # source unit: inches
-        o = o.where((o >= -ORIG_NEG_TOL_IN) & (o <= ORIG_MAX_IN)).clip(lower=0)
-        o = causal_spike_filter(o)
-        per[t]["_orig_cm"] = o * 2.54
-    out["snwd_orig"] = composite("_orig_cm")
     return out
 
 
 def resort_weather(frames: list[pd.DataFrame]) -> pd.DataFrame:
     """Mean of member stations' Open-Meteo daily features (each requested at its own station lat/lon/elevation),
-    renamed to short names and converted to SI (cm, h). Open-Meteo returns no NaN for these variables (notebook 03 §2),
+    renamed to short names and converted to SI (cm, h). Open-Meteo returns no NaN for these variables (notebook §3.7),
     so the mean is over a fixed set of members on every day."""
     idx = _daily_index(frames)
     stack = pd.concat([f.reindex(idx) for f in frames], keys=range(len(frames)))
@@ -197,12 +158,57 @@ def build_features(d: pd.DataFrame) -> pd.DataFrame:
     for k in WINDOWS:
         f[f"d_land_sd_{k}"] = d["land_sd"] - d["land_sd"].shift(k)
     f["land_tmean_mean_7"] = _trailing(d["land_tmean"], 7, "mean")
-
-    # D-024 robustness: the same snow-state features from NRCS's ORIGINAL (pre-edit) readings
-    f["rob_snwd_t"] = d["snwd_orig"]
-    for k in WINDOWS:
-        f[f"rob_d_snwd_{k}"] = d["snwd_orig"] - d["snwd_orig"].shift(k)
     return f
+
+
+# Data dictionary for build_features' columns: (regex, group, source, definition, unit). A standalone "k" in a
+# definition is replaced by the window length captured by the regex. Keep this next to build_features: every new feature needs an entry.
+FEATURE_DOCS = [
+    (r"dowy", "calendar", "—", "days since Oct 1 of the water year, at issue date t", "d"),
+    (r"target_dowy", "calendar", "—", "dowy + 30 (the target's day of season; used to look up climatology)", "d"),
+    (r"doy_(sin|cos)", "calendar", "—", "sin/cos of 2π·day-of-year/365.25", "—"),
+    (r"snwd_t", "snow state", "SNOTEL", "snow depth at end of day t (cleaned; ≤3-day causal fill allowed)", "cm"),
+    (r"wteq_t", "snow state", "SNOTEL", "snow-water equivalent at end of day t", "cm"),
+    (r"snwd_t_imputed", "snow state", "SNOTEL", "1 if snwd_t was forward-filled (D-022)", "0/1"),
+    (r"d_snwd_(\d+)", "snow state", "SNOTEL", "snwd_t − snwd_(t−k)", "cm"),
+    (r"d_wteq_(\d+)", "snow state", "SNOTEL", "wteq_t − wteq_(t−k)", "cm"),
+    (r"prcp_sum_(\d+)", "snow state", "SNOTEL", "station precipitation, sum over t−k+1..t (strict)", "mm"),
+    (r"(snwd|wteq)_peak_wy", "snow state", "SNOTEL", "season maximum from Oct 1 to t", "cm"),
+    (r"(tmax|tmin|tmean)_t", "weather, day t", "ERA5", "day-t temperature", "°C"),
+    (r"snowfall_t", "weather, day t", "ERA5", "day-t snowfall", "cm"),
+    (r"precip_t", "weather, day t", "ERA5", "day-t precipitation", "mm"),
+    (r"pmsl_t", "weather, day t", "ERA5", "day-t mean sea-level pressure", "hPa"),
+    (r"d_pmsl_3", "weather, day t", "ERA5", "pressure tendency pmsl_t − pmsl_(t−3)", "hPa"),
+    (r"precip_sum_(\d+)", "weather, trailing", "ERA5", "precipitation, sum over t−k+1..t", "mm"),
+    (r"snowfall_sum_(\d+)", "weather, trailing", "ERA5", "snowfall, sum over t−k+1..t", "cm"),
+    (r"sun_h_sum_(\d+)", "weather, trailing", "ERA5", "sunshine hours, sum over t−k+1..t", "h"),
+    (r"pdd_sum_(\d+)", "weather, trailing", "ERA5", "positive degree-days Σ max(tmean, 0) over t−k+1..t (melt proxy)", "°C·d"),
+    (r"(tmean|tmax|tmin)_mean_(\d+)", "weather, trailing", "ERA5", "temperature, mean over t−k+1..t", "°C"),
+    (r"wind_max_mean_(\d+)", "weather, trailing", "ERA5", "daily max wind, mean over t−k+1..t", "km/h"),
+    (r"(cloud|rh)_mean_(\d+)", "weather, trailing", "ERA5", "cloud cover / relative humidity, mean over t−k+1..t", "%"),
+    (r"pmsl_mean_(\d+)", "weather, trailing", "ERA5", "sea-level pressure, mean over t−k+1..t", "hPa"),
+    (r"snowfall_wy", "weather, season-to-date", "ERA5", "snowfall, running total from Oct 1 to t", "cm"),
+    (r"precip_wy", "weather, season-to-date", "ERA5", "precipitation, running total from Oct 1 to t", "mm"),
+    (r"pdd_wy", "weather, season-to-date", "ERA5", "positive degree-days, running total from Oct 1 to t", "°C·d"),
+    (r"land_sd_t", "reanalysis snow", "ERA5-Land", "modelled snow depth on day t (feature only, never truth)", "cm"),
+    (r"d_land_sd_(\d+)", "reanalysis snow", "ERA5-Land", "land_sd_t − land_sd_(t−k)", "cm"),
+    (r"land_tmean_mean_7", "reanalysis snow", "ERA5-Land", "7-day mean ERA5-Land temperature (0.1° grid)", "°C"),
+]
+
+
+def feature_dictionary(columns) -> pd.DataFrame:
+    """One documented row per feature column; raises KeyError for an undocumented column."""
+    rows = []
+    for col in columns:
+        for pat, group, source, definition, unit in FEATURE_DOCS:
+            m = re.fullmatch(pat, col)
+            if m:
+                k = next((g for g in m.groups() if g and g.isdigit()), None)
+                rows.append((col, group, source, re.sub(r"\bk\b", k, definition) if k else definition, unit))
+                break
+        else:
+            raise KeyError(f"feature {col!r} has no FEATURE_DOCS entry")
+    return pd.DataFrame(rows, columns=["column", "group", "source", "definition", "unit"])
 
 
 def labels(d: pd.DataFrame, horizon: int = HORIZON) -> pd.DataFrame:

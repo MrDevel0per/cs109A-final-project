@@ -6,12 +6,12 @@ date,observation date (AWDB periodRef=END),
 winter,season label = year the winter ends (Jul–Dec -> next year),
 water_year,"Oct 1 – Sep 30, labelled by end year (PREC resets)",
 in_season,Nov 1 – Apr 30,
-SNWD_cm,snow depth (target) — cleaned (see cleaning_log.csv),cm
+SNWD_cm,snow depth (the target) — cleaned (see cleaning_log.csv),cm
 WTEQ_cm,snow-water equivalent — cleaned (see cleaning_log.csv),cm
-TAVG_C,daily mean air temp — cleaned (see cleaning_log.csv),°C
-TMAX_C,daily max air temp — cleaned (see cleaning_log.csv),°C
-TMIN_C,daily min air temp — cleaned (see cleaning_log.csv),°C
-PRCP_mm,daily precipitation increment — cleaned (see cleaning_log.csv),mm
+TAVG_C,daily mean air temperature — cleaned (see cleaning_log.csv),°C
+TMAX_C,daily max air temperature — cleaned (see cleaning_log.csv),°C
+TMIN_C,daily min air temperature — cleaned (see cleaning_log.csv),°C
+PRCP_mm,daily precipitation — cleaned (see cleaning_log.csv),mm
 PREC_mm,precipitation accumulated since Oct 1 — cleaned (see cleaning_log.csv),mm
 SNWD_clean_flag,"our cleaning rule IDs applied to SNWD, ';'-separated ('' = untouched)",
 SNWD_imputed,True if SNWD was filled by causal forward fill of a ≤3-day interior gap,

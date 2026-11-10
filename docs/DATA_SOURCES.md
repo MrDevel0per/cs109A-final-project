@@ -1,5 +1,7 @@
 # Data sources — what exists, what we tested, what we found
 
+> **Note (2026-11-10):** references below to "notebook 01 / 01b / 02 / 03" point to the exploratory notebooks at commit `eca1c57`; they were merged into `notebooks/snowpredict.ipynb` (D-042).
+
 All probes were run on 2026-11-09. "St. Anton" = 47.13, 10.27. "Independence Pass" = SNOTEL 542:CO:SNTL (39.07543, -106.61154, 10,570 ft / 3222 m).
 
 ---
@@ -195,7 +197,7 @@ At this site Open-Meteo's reanalysis tracks real snow depth well, but it is bias
 
 ## 5. Independent verification (notebook 01b, 2026-11-10)
 
-**SNOTEL: our parser vs the NRCS Report Generator CSV** (an independent NRCS endpoint, fetched via `src/lineage_text.py`).
+**SNOTEL: our parser vs the NRCS Report Generator CSV** (an independent NRCS endpoint, fetched via `src/lineage_text.py`, removed in D-042; see commit `eca1c57` to reproduce).
 Checked at Ivanhoe (547:CO, ~12.7k days) and Palisades Tahoe (784:CA, ~16.7k days):
 - 100 % exact match for WTEQ, SNWD, TAVG, TMAX, TMIN and PRCP, and 99.73 % for PREC. **0 unexplained mismatches.**
 - The leftover differences are fully explained:
