@@ -1,41 +1,41 @@
-step,rule,column,scope,n_affected,action,reason
-2,complete daily calendar,all,all candidate stations,38,insert NaN rows,absent days must exist as rows before missingness can be measured
-4,NRCS QC flag S (suspect) still carrying a value,SNWD,all candidate stations,113,set NaN,NRCS judged the reading suspect; the original is preserved in *_nrcs_orig
-4,NRCS QC flag S (suspect) still carrying a value,WTEQ,all candidate stations,0,set NaN,NRCS judged the reading suspect; the original is preserved in *_nrcs_orig
-4,NRCS QC flag S (suspect) still carrying a value,TAVG,all candidate stations,492,set NaN,NRCS judged the reading suspect; the original is preserved in *_nrcs_orig
-4,NRCS QC flag S (suspect) still carrying a value,TMAX,all candidate stations,491,set NaN,NRCS judged the reading suspect; the original is preserved in *_nrcs_orig
-4,NRCS QC flag S (suspect) still carrying a value,TMIN,all candidate stations,521,set NaN,NRCS judged the reading suspect; the original is preserved in *_nrcs_orig
-4,NRCS QC flag S (suspect) still carrying a value,PREC,all candidate stations,292,set NaN,NRCS judged the reading suspect; the original is preserved in *_nrcs_orig
-4,NRCS QC flag S (suspect) still carrying a value,PRCP,all candidate stations,363,set NaN,NRCS judged the reading suspect; the original is preserved in *_nrcs_orig
-4,NRCS QC flag S with value already null,all,all candidate stations,5726,keep NaN,"NRCS removed the value; we do NOT restore the original (originals behind S are physically implausible, e.g. ±200 in)"
-4,"NRCS QC flags E/K/C (edited, estimated, corrected)",all,all candidate stations,803859,keep,NRCS corrections fix known sensor errors; flags kept per row so models can test sensitivity
-4,undocumented flags G/T,TAVG/TMAX/TMIN/WTEQ,all candidate stations,544,keep flag; values judged by §5 rules,not in NRCS flag list; G rows (Vail 1985) contain ~3000 °F and are removed by the physical bounds in §5
-5.1,"SNWD in [-4, 0) in",SNWD,all candidate stations,0,set 0,ultrasonic zero-offset: small negatives cluster at -2..-4 in on bare ground
-5.1,SNWD < -4 in,SNWD,all candidate stations,0,set NaN,impossible; values ~ -60 in are sensor errors
-5.2,|SNWD - rolling median(7d)| > 20 in,SNWD,all candidate stations,28,set NaN,"residual histogram has its minimum in the 20–30 in bin, between storm/settlement deviations (≤20 in) and the spike tail (>30 in); 99.99th pct = 37 in"
-5.3,|WTEQ - rolling median(7d)| > 5 in,WTEQ,all candidate stations,2,set NaN,pillow residuals are almost all ≤ 2 in; > 5 in is isolated
-5.4,SNWD < WTEQ (density > 1) with WTEQ ≥ 1 in,SNWD,all candidate stations,134,set NaN,physically impossible
-5.4,SNWD = 0 while WTEQ > 4 in (Nov–Apr),SNWD,all candidate stations,0,set NaN,depth-sensor dropout
-5.4,"density in (0.7, 1]",SNWD,all candidate stations,82,flag only (keep),implausible but not impossible
-5.5,"Jul–Sep, WTEQ = 0 and SNWD > 0",SNWD,all candidate stations,878,set 0,ultrasonic sensor sees vegetation; pillow is empty
-5.6,TAVG identical for ≥ 5 consecutive days,TAVG,all candidate stations,1324,set NaN,flat-lined logger (e.g. Stevens Pass Aug 1989: TMIN -29 °C for 12 days); count barely changes from 5 to 10+ days
-5.6,TMAX identical for ≥ 5 consecutive days,TMAX,all candidate stations,1322,set NaN,flat-lined logger (e.g. Stevens Pass Aug 1989: TMIN -29 °C for 12 days); count barely changes from 5 to 10+ days
-5.6,TMIN identical for ≥ 5 consecutive days,TMIN,all candidate stations,1333,set NaN,flat-lined logger (e.g. Stevens Pass Aug 1989: TMIN -29 °C for 12 days); count barely changes from 5 to 10+ days
-5.6,"TAVG outside [-50, 100] °F",TAVG,all candidate stations,46,set NaN,"-60.3 °F repeats hundreds of times (sensor floor sentinel); thousands of °F are logger garbage (e.g. Vail 1985, flag G)"
-5.6,"TMAX outside [-50, 100] °F",TMAX,all candidate stations,160,set NaN,"-60.3 °F repeats hundreds of times (sensor floor sentinel); thousands of °F are logger garbage (e.g. Vail 1985, flag G)"
-5.6,"TMIN outside [-50, 100] °F",TMIN,all candidate stations,54,set NaN,"-60.3 °F repeats hundreds of times (sensor floor sentinel); thousands of °F are logger garbage (e.g. Vail 1985, flag G)"
-5.6,|TAVG - rolling median(7d)| > 30 °F,TAVG,all candidate stations,15,set NaN,99.9th pct of residual is ~24 °F; > 30 °F persists for only 1–2 days = sensor glitch
-5.6,|TMAX - rolling median(7d)| > 30 °F,TMAX,all candidate stations,133,set NaN,99.9th pct of residual is ~24 °F; > 30 °F persists for only 1–2 days = sensor glitch
-5.6,|TMIN - rolling median(7d)| > 30 °F,TMIN,all candidate stations,64,set NaN,99.9th pct of residual is ~24 °F; > 30 °F persists for only 1–2 days = sensor glitch
-5.6,TMIN > TMAX,"TMIN,TMAX",all candidate stations,40,set both NaN,impossible
-5.6,"TAVG outside [TMIN-1, TMAX+1] °F",TAVG,all candidate stations,10,set NaN,average must lie between min and max (1 °F tolerance for rounding)
-5.6,TMAX - TMIN > 35 °C,TMAX,all candidate stations,179,set TMAX NaN,range distribution flattens beyond its 99.9th pct (~35 °C) = sensor artefact (radiation-heated TMAX); heat-dome days at Stevens Pass have normal ranges and are kept
-5.6,TAVG - TMIN > 20 °C,TAVG,all candidate stations,122,set NaN,"99.9th pct is ~18 °C; tail flattens beyond 20 °C and is dominated by days whose TMAX was already faulty (e.g. Nast Lake Aug–Sep 2005, TAVG 37 °C)"
-5.7,PRCP < 0,PRCP,all candidate stations,0,set NaN,daily precipitation cannot be negative
-5.7,PREC decreases within a water year,PREC,all candidate stations,8,flag only,accumulated precip should not fall; drops are 0.1 in (gauge noise) — PRCP already encodes the increments
-6,forward-fill interior gaps ≤ 3 d,SNWD,all candidate stations,1029,causal forward fill (last valid value),"state variables change little over 1–3 days; causal fill carries no future information, so it is safe as a feature; longer gaps left NaN"
-6,forward-fill interior gaps ≤ 3 d,WTEQ,all candidate stations,7,causal forward fill (last valid value),"state variables change little over 1–3 days; causal fill carries no future information, so it is safe as a feature; longer gaps left NaN"
-6,forward-fill interior gaps ≤ 3 d,TAVG,all candidate stations,1218,causal forward fill (last valid value),"state variables change little over 1–3 days; causal fill carries no future information, so it is safe as a feature; longer gaps left NaN"
-6,forward-fill interior gaps ≤ 3 d,TMAX,all candidate stations,1313,causal forward fill (last valid value),"state variables change little over 1–3 days; causal fill carries no future information, so it is safe as a feature; longer gaps left NaN"
-6,forward-fill interior gaps ≤ 3 d,TMIN,all candidate stations,1420,causal forward fill (last valid value),"state variables change little over 1–3 days; causal fill carries no future information, so it is safe as a feature; longer gaps left NaN"
-7,unit conversion,all value columns,all candidate stations,285778,"in→cm/mm, °F→°C",SI units for modelling; originals kept in source units
+step,rule,column,n_affected,action,reason
+3.1,complete daily calendar,all,38,insert NaN rows,absent days must exist as rows before missingness can be measured
+3.3,NRCS QC flag S (suspect) still carrying a value,SNWD,113,set NaN,NRCS judged the reading suspect; the original is preserved in *_nrcs_orig
+3.3,NRCS QC flag S (suspect) still carrying a value,WTEQ,0,set NaN,NRCS judged the reading suspect; the original is preserved in *_nrcs_orig
+3.3,NRCS QC flag S (suspect) still carrying a value,TAVG,492,set NaN,NRCS judged the reading suspect; the original is preserved in *_nrcs_orig
+3.3,NRCS QC flag S (suspect) still carrying a value,TMAX,491,set NaN,NRCS judged the reading suspect; the original is preserved in *_nrcs_orig
+3.3,NRCS QC flag S (suspect) still carrying a value,TMIN,521,set NaN,NRCS judged the reading suspect; the original is preserved in *_nrcs_orig
+3.3,NRCS QC flag S (suspect) still carrying a value,PREC,292,set NaN,NRCS judged the reading suspect; the original is preserved in *_nrcs_orig
+3.3,NRCS QC flag S (suspect) still carrying a value,PRCP,363,set NaN,NRCS judged the reading suspect; the original is preserved in *_nrcs_orig
+3.3,NRCS QC flag S with value already null,all,5726,keep NaN,"NRCS removed the value; we do NOT restore the original (originals behind S include physically impossible values, e.g. ±200 in)"
+3.3,"NRCS QC flags E/K/C (edited, estimated, corrected)",all,803859,keep,NRCS corrections fix known sensor errors; flags kept per row so models can test sensitivity
+3.3,undocumented flags G/T,TAVG/TMAX/TMIN/WTEQ,544,keep flag; values judged by §3.4 rules,not in NRCS flag list; G rows (Vail 1985) contain ~3000 °F and are removed by the physical bounds in §3.4
+3.4,"SNWD in [-4, 0) in",SNWD,0,set 0,ultrasonic zero-offset: small negatives cluster at -2..-4 in on bare ground
+3.4,SNWD < -4 in,SNWD,0,set NaN,impossible; values ~ -60 in are sensor errors
+3.4,|SNWD - rolling median(7d)| > 20 in,SNWD,28,set NaN,"residual histogram has its minimum in the 20–30 in bin, between storm/settlement deviations (≤20 in) and the spike tail (>30 in); 99.99th pct = 37 in"
+3.4,|WTEQ - rolling median(7d)| > 5 in,WTEQ,2,set NaN,pillow residuals are almost all ≤ 2 in; > 5 in is isolated
+3.4,SNWD < WTEQ (density > 1) with WTEQ ≥ 1 in,SNWD,134,set NaN,physically impossible
+3.4,SNWD = 0 while WTEQ > 4 in (Nov–Apr),SNWD,0,set NaN,depth-sensor dropout
+3.4,"density in (0.7, 1]",SNWD,82,flag only (keep),implausible but not impossible
+3.4,"Jul–Sep, WTEQ = 0 and SNWD > 0",SNWD,878,set 0,ultrasonic sensor sees vegetation; pillow is empty
+3.4,TAVG identical for ≥ 5 consecutive days,TAVG,1324,set NaN,flat-lined logger (e.g. Stevens Pass Aug 1989: TMIN -29 °C for 12 days); count barely changes from 5 to 10+ days
+3.4,TMAX identical for ≥ 5 consecutive days,TMAX,1322,set NaN,flat-lined logger (e.g. Stevens Pass Aug 1989: TMIN -29 °C for 12 days); count barely changes from 5 to 10+ days
+3.4,TMIN identical for ≥ 5 consecutive days,TMIN,1333,set NaN,flat-lined logger (e.g. Stevens Pass Aug 1989: TMIN -29 °C for 12 days); count barely changes from 5 to 10+ days
+3.4,"TAVG outside [-50, 100] °F",TAVG,46,set NaN,"-60.3 °F repeats hundreds of times (sensor floor sentinel); thousands of °F are logger garbage (e.g. Vail 1985, flag G)"
+3.4,"TMAX outside [-50, 100] °F",TMAX,160,set NaN,"-60.3 °F repeats hundreds of times (sensor floor sentinel); thousands of °F are logger garbage (e.g. Vail 1985, flag G)"
+3.4,"TMIN outside [-50, 100] °F",TMIN,54,set NaN,"-60.3 °F repeats hundreds of times (sensor floor sentinel); thousands of °F are logger garbage (e.g. Vail 1985, flag G)"
+3.4,|TAVG - rolling median(7d)| > 30 °F,TAVG,15,set NaN,99.9th pct of residual is ~24 °F; > 30 °F persists for only 1–2 days = sensor glitch
+3.4,|TMAX - rolling median(7d)| > 30 °F,TMAX,133,set NaN,99.9th pct of residual is ~24 °F; > 30 °F persists for only 1–2 days = sensor glitch
+3.4,|TMIN - rolling median(7d)| > 30 °F,TMIN,64,set NaN,99.9th pct of residual is ~24 °F; > 30 °F persists for only 1–2 days = sensor glitch
+3.4,TMIN > TMAX,"TMIN,TMAX",40,set both NaN,impossible
+3.4,"TAVG outside [TMIN-1, TMAX+1] °F",TAVG,10,set NaN,average must lie between min and max (1 °F tolerance for rounding)
+3.4,TMAX - TMIN > 35 °C,TMAX,179,set TMAX NaN,range distribution flattens beyond its 99.9th pct (~35 °C) = sensor artefact (radiation-heated TMAX); heat-dome days at Stevens Pass have normal ranges and are kept
+3.4,TAVG - TMIN > 20 °C,TAVG,122,set NaN,"99.9th pct is ~18 °C; tail flattens beyond 20 °C and is dominated by days whose TMAX was already faulty (e.g. Nast Lake Aug–Sep 2005, TAVG 37 °C)"
+3.4,PRCP < 0,PRCP,0,set NaN,daily precipitation cannot be negative
+3.4,PREC decreases within a water year,PREC,8,flag only,accumulated precip should not fall; drops are 0.1 in (gauge noise) — PRCP already encodes the increments
+3.5,forward-fill interior gaps ≤ 3 d,SNWD,1029,causal forward fill (last valid value),"state variables change little over 1–3 days; causal fill carries no future information, so it is safe as a feature; longer gaps left NaN"
+3.5,forward-fill interior gaps ≤ 3 d,WTEQ,7,causal forward fill (last valid value),"state variables change little over 1–3 days; causal fill carries no future information, so it is safe as a feature; longer gaps left NaN"
+3.5,forward-fill interior gaps ≤ 3 d,TAVG,1218,causal forward fill (last valid value),"state variables change little over 1–3 days; causal fill carries no future information, so it is safe as a feature; longer gaps left NaN"
+3.5,forward-fill interior gaps ≤ 3 d,TMAX,1313,causal forward fill (last valid value),"state variables change little over 1–3 days; causal fill carries no future information, so it is safe as a feature; longer gaps left NaN"
+3.5,forward-fill interior gaps ≤ 3 d,TMIN,1420,causal forward fill (last valid value),"state variables change little over 1–3 days; causal fill carries no future information, so it is safe as a feature; longer gaps left NaN"
+3.6,unit conversion,all value columns,285778,"in→cm/mm, °F→°C",SI units for modelling; originals kept in source units

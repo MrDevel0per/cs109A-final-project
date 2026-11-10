@@ -1,7 +1,7 @@
 """Single source of truth for locations used in SnowPredict.
 
 Any change here must be logged in docs/DECISIONS.md. Coordinates/elevations of SNOTEL stations are
-NOT typed in by hand — they are read from the SNOTEL station metadata (see notebook 01, §3).
+NOT typed in by hand — they are read from the SNOTEL station metadata (see src/sources.py::station_metadata).
 """
 
 # Ski-area reference points (approx. base-area coordinates, used only for distances / labels).
@@ -13,7 +13,7 @@ SKI_AREAS = {
     "St. Anton (AT)":   (47.1300,   10.2700),   # original proposal; used for Open-Meteo-only probes
 }
 
-# Candidate SNOTEL stations examined in notebook 01 (triplet -> group label).
+# Candidate SNOTEL stations examined in the notebook (§1–2) (triplet -> group label).
 # Aspen-area = all active stations within ~40 km of Aspen town; others = stations on/next to resorts.
 CANDIDATE_STATIONS = {
     # Aspen area (D-003)

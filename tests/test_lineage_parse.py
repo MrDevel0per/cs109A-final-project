@@ -1,4 +1,4 @@
-"""Tests for lineage (fetch/caching/manifest/offline/migration), verify_raw, lineage_text and parse.
+"""Tests for lineage (fetch/caching/manifest/offline), verify_raw and parse.
 
 No network: requests.get is monkeypatched; data/raw is redirected to a pytest tmp dir.
 """
@@ -14,7 +14,6 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 import lineage  # noqa: E402
-import lineage_text  # noqa: E402
 import parse  # noqa: E402
 import verify_raw  # noqa: E402
 
@@ -34,8 +33,6 @@ def sandbox(tmp_path, monkeypatch):
         monkeypatch.setattr(mod, "ROOT", tmp_path)
         monkeypatch.setattr(mod, "RAW", raw)
         monkeypatch.setattr(mod, "MANIFEST", raw / "MANIFEST.csv")
-    monkeypatch.setattr(lineage_text, "ROOT", tmp_path)
-    monkeypatch.setattr(lineage_text, "RAW", raw)
     monkeypatch.setattr(lineage.time, "sleep", lambda s: None)
     monkeypatch.delenv("SNOWPREDICT_OFFLINE", raising=False)
     calls = []
@@ -47,7 +44,6 @@ def sandbox(tmp_path, monkeypatch):
             calls.append({"url": url, "headers": headers})
             return seq.pop(0) if len(seq) > 1 else seq[0]
         monkeypatch.setattr(lineage.requests, "get", fake_get)
-        monkeypatch.setattr(lineage_text.requests, "get", fake_get)
     install(FakeResp())
     return {"root": tmp_path, "raw": raw, "calls": calls, "install": install}
 
@@ -123,8 +119,6 @@ def test_offline_mode_raises_without_network(sandbox, monkeypatch):
     monkeypatch.setenv("SNOWPREDICT_OFFLINE", "1")
     with pytest.raises(FileNotFoundError):
         lineage.fetch("https://x/api", {"q": 9}, source="s", name="off")
-    with pytest.raises(FileNotFoundError):
-        lineage_text.fetch_text("https://x/r.csv", source="s", name="off")
     assert sandbox["calls"] == []
 
 
@@ -132,36 +126,6 @@ def test_offline_mode_still_reads_cache(sandbox, monkeypatch):
     lineage.fetch("https://x/api", {"q": 1}, source="s", name="n")
     monkeypatch.setenv("SNOWPREDICT_OFFLINE", "1")
     assert lineage.fetch("https://x/api", {"q": 1}, source="s", name="n") == {"ok": 1}
-
-
-# ----------------------------------------------------------------------------- manifest migration
-def test_manifest_migration_backfills_legacy_user_agent(sandbox):
-    raw = sandbox["raw"]
-    raw.mkdir(parents=True)
-    old_cols = [c for c in lineage.MANIFEST_COLS if c != "user_agent"]
-    with (raw / "MANIFEST.csv").open("w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=old_cols)
-        w.writeheader()
-        w.writerow({c: f"old_{c}" for c in old_cols})
-    lineage.fetch("https://x/api", {"q": 1}, source="s", name="n")
-    rows = read_manifest(raw)
-    assert list(rows[0].keys()) == lineage.MANIFEST_COLS
-    assert rows[0]["user_agent"] == lineage.LEGACY_USER_AGENT and rows[0]["url"] == "old_url"
-    assert rows[1]["user_agent"] == lineage.USER_AGENT
-
-
-# ----------------------------------------------------------------------------- lineage_text
-def test_fetch_text_matches_lineage_contract(sandbox):
-    body = b"# header\nDate,SNWD\n2020-01-01,40\n"
-    sandbox["install"](FakeResp(200, body))
-    url = lineage_text.report_generator_url("547:CO:SNTL", ["SNWD", "WTEQ"])
-    assert url.endswith('/547:CO:SNTL%7Cid=%22%22%7Cname/POR_BEGIN,POR_END/SNWD::value,WTEQ::value')
-    assert lineage_text.fetch_text(url, source="rg", name="t") == body.decode()
-    r = read_manifest(sandbox["raw"])[0]
-    assert r["url"] == url and r["file"].endswith(".csv") and r["user_agent"] == lineage.USER_AGENT
-    assert (sandbox["root"] / r["file"]).read_bytes() == body
-    lineage_text.fetch_text(url, source="rg", name="t")
-    assert len(sandbox["calls"]) == 1
 
 
 # ----------------------------------------------------------------------------- verify_raw
