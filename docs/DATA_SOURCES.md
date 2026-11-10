@@ -212,7 +212,13 @@ Checked at Ivanhoe (547:CO, ~12.7k days) and Palisades Tahoe (784:CA, ~16.7k day
 - SNOTEL stamps are in local *standard* time all year, while `timezone=auto` switches to daylight time in mid-March. The resulting ≤1 h offset is negligible for daily depth.
 
 **Open-Meteo: daily vs hourly.** With `timezone=auto`, daily `snow_depth_mean/max` equal the **local-calendar-day** mean/max of the hourly `snow_depth` on 100 % of 182 days (ERA5-Land and ERA5-seamless, Aspen 2023-24). Aggregating by UTC day would disagree on 34–50 % of days, so always request `timezone=auto`.
-- *The temperature version of this check is pending.* Open-Meteo's **hourly** request limit was hit. Re-run 01b §3b later.
+- **Temperature (01b §3b, done 2026-11-10).** At two SNOTEL stations (station lat/lon and elevation, ERA5-Land, 2022-11-01 to 2023-04-30, 181 days each, 24 local hours every day), daily `temperature_2m_mean` matches the **local-day (00–23 h) mean** of the hourly `temperature_2m`:
+  - max |diff| 0.071 °C, and 100 % of days are within 0.1 °C (one display step);
+  - 85.6 % (Independence Pass 542:CO) and 80.1 % (Palisades Tahoe 784:CA) of days are within 0.05 °C;
+  - the UTC-day mean agrees on only 4.4 % / 5.0 % of days (max |diff| 2.87 / 2.52 °C), and shifting the local window by ±1–2 h is also far worse (≤ 35 % within 0.05 °C).
+  - The leftover differences have a constant **+0.02 °C bias** (daily minus mean of the rounded hourly values) that does not change when the window is shifted. So it comes from precision, not windowing: Open-Meteo most likely averages unrounded hourly values and then rounds to 0.1 °C. This is negligible.
+  - The first attempts (2026-11-10 00:39–00:40Z) returned HTTP 429 and are logged but not cached. The 200 responses came at 02:42Z: `data/raw/open_meteo/aggcheck_542_CO_SNTL__9690c8fa34.json` and `aggcheck_784_CA_SNTL__27e91c3f70.json`.
+  - Requests: `https://archive-api.open-meteo.com/v1/archive?daily=snow_depth_mean,temperature_2m_mean,snow_depth_max&elevation=3222.0&end_date=2023-04-30&hourly=snow_depth,temperature_2m&latitude=39.07543&longitude=-106.61154&models=era5_land&start_date=2022-11-01&timezone=auto` and `https://archive-api.open-meteo.com/v1/archive?daily=snow_depth_mean,temperature_2m_mean,snow_depth_max&elevation=2441.0&end_date=2023-04-30&hourly=snow_depth,temperature_2m&latitude=39.18986&longitude=-120.26576&models=era5_land&start_date=2022-11-01&timezone=auto`.
 
 **Rate limits.** Besides the per-minute limit, Open-Meteo has an **hourly** limit ("Hourly API request limit exceeded"). A full notebook-01 run can reach it, and a 65 s back-off does not clear it. The cache means re-runs cost nothing.
 
@@ -242,3 +248,66 @@ Evidence and rules are in `notebooks/02_cleaning_snotel.ipynb`. Each rule's rows
 - **Stuck temperature loggers:** ~1,300 flat-lined days per temperature variable, mostly 1985–1991 at Palisades, Stevens Pass, Heavenly and Brumley.
 - **−60.3 °F sentinel:** appears ~187 times in the original readings, 131 of them at Independence Pass.
 - **No QA flags before ~2023.** Recent winters are mostly provisional (P), so NRCS may still revise them (D-024).
+
+## 7. Modelling table and weather-input checks (notebook 03, 2026-11-10)
+Full evidence is in `notebooks/03_modelling_table.ipynb`. Every number below is printed there. Decisions D-029 to D-037.
+
+**Inputs and lineage**
+- 48 Open-Meteo feature chunks, 4.11 MB, all re-hashed against MANIFEST. Every request had the model pinned (`era5` / `era5_land`), an explicit `elevation=` (station elevation in m: Kiln 2929, Brumley 3222, Brighton 2679, Heavenly 2603) and `timezone=auto`.
+- Request template (from `src/features.py`):
+  `https://archive-api.open-meteo.com/v1/archive?daily=<vars>&elevation=<m>&end_date=<chunk end>&latitude=<stn>&longitude=<stn>&models=<era5|era5_land>&start_date=<chunk start>&timezone=auto`
+- Exact URLs are in MANIFEST rows named `feat_*`. One minutely 429 was logged and not cached.
+- The clean SNOTEL input was `snotel_clean.parquet`, sha256 `a8166694…`.
+
+**Grid cells** (`cell_selection` was not passed, so the default `land` applied: an elevation-matched land cell, not necessarily the nearest)
+
+| Station | ERA5 cell | km from station | ERA5-Land cell | km from station |
+|---|---|---|---|---|
+| Kiln | 39.25, −106.50 | 12.4 | 39.30, −106.70 | 7.6 |
+| Brumley | 39.00, −106.50 | 10.4 | 39.10, −106.50 | 3.9 |
+| Brighton | 40.50, −111.50 | 13.0 | 40.60, −111.60 | 1.5 |
+| Heavenly | 39.00, −120.00 | 11.1 | 38.90, −119.90 | 3.1 |
+
+- Each station uses the same cell in every chunk.
+- Kiln and Brumley share no cell.
+- Time zones: America/Denver (UTC−7) and America/Los_Angeles (UTC−8), fixed standard-time offsets.
+
+**Quality**
+- 10,592 days per station, 0 NaN, no duplicate days at chunk seams.
+- Zero violations of the physical checks (temperature ordering, non-negativity, RH/cloud 0–100, pressure 940–1080 hPa, sunshine ≤ CBM day length + 0.25 h).
+- **Snowfall vs precipitation are inconsistent:**
+  - `snowfall_sum` > 0.7 × `precipitation_sum` + 0.1 on 520–1,371 days per station (8.8–23.7 % of wet days, by precipitation band).
+  - Maximum ratio 1.9–2.45.
+  - 127–321 days per station with snowfall > 0 and precipitation = 0.
+  - So the two are separately derived; never compute rain = precipitation − snowfall/0.7 (D-030).
+- Largest daily precipitation totals line up with known storms. Heavenly: 2022-12-31 (97.1 mm), 2021-10-24 (90.2 mm), 2017-01-08 (84.1 mm).
+
+**Agreement with SNOTEL** (in-season, each resort's modelled winters)
+
+| | Aspen | Brighton | Heavenly |
+|---|---|---|---|
+| r(ERA5 tmean, SNOTEL tavg) | 0.94 | 0.87 | 0.88 |
+| ERA5 − SNOTEL temperature bias (°C) | +0.41 | −1.73 | −0.82 |
+| r(monthly precipitation) | 0.85 | 0.88 | 0.97 |
+| r(daily precipitation) | 0.71 | 0.77 | 0.88 |
+| ERA5 / SNOTEL precipitation total | 0.95 | **0.61** | 0.96 |
+| r(ERA5-Land depth, SNWD) | 0.90 | 0.94 | 0.96 |
+| ERA5-Land / SNWD mean depth | 1.00 | 0.75 | 0.64 |
+
+**Consistency over time**
+- ERA5 − ERA5-Land temperature has no step; the test-period shift is −0.26 to +0.16 °C, under 1 SD between winters.
+- SNOTEL − ERA5 temperature at Aspen drifts about −1 °C from ~2013 (test mean −0.54 °C, about 1 SD). This is one more reason not to use SNOTEL temperatures as features.
+- Brighton's SNOTEL temperature record starts in 2007.
+
+**Target and table**
+- Aspen composite: Kiln and Brumley are both present on 4,120 of 4,169 in-season days; 45 days have only Kiln and 4 only Brumley. r = 0.94; Kiln is 2.9 cm shallower on average.
+- Modelling table: **14,319 rows × 61 columns** (2.0 MB parquet); 14,231 measured labels; 13,862 complete-case rows.
+- Split rows (train / val / test):
+
+| | Train | Val | Test |
+|---|---|---|---|
+| Aspen | 2,357 | 725 | 1,087 |
+| Brighton | 3,444 | 725 | 1,087 |
+| Heavenly | 3,082 | 725 | 1,087 |
+
+**Raw NRCS originals:** frequent multi-day glitches (e.g. Brighton 2023-11-23: 208 in on a 10 in day). In training winters 1998–2016, the causal QC (D-037) rejects 137 readings at Kiln and 293 at Brighton, with 0 wrong at either.

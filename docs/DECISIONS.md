@@ -303,5 +303,117 @@ Our own data: density median 0.28, 99.9th percentile 0.70 (notebook 02).
 - **Detached run.** It runs under `nohup` and `caffeinate -i`, so it survives the editor or Claude session closing and macOS idle sleep. Closing the lid still pauses it; it resumes on wake.
 - **Tested:** `tests/test_robustness.py` covers Wi-Fi drop then recovery, a persistent outage, the hourly limit, a crash before the rename, and re-running after a crash.
 
+## D-029 — Modelling-table rows: target date in Nov 1 – Apr 30; labels are measured targets only
+**Status:** PROPOSED · 2026-11-10 (notebook 03 §5)
+**Context:** the revised question asks for depth on day *t* + 30 during the season, so the season could constrain either the issue date or the target date.
+**Options:** (a) issue date in Nov–Apr, so targets run to May 30; (b) **target date in Nov–Apr**, so issue dates run Oct 2 – Mar 31.
+**Decision:** (b). It matches the question's "depth on day *t* + 30 (Nov–Apr)", and the issue and target date always fall in the same winter (asserted in `modeltable.model_table`).
+- A row is a **label** only if the target is measured: present, not imputed, and every composite member present (`y_measured`).
+- The single look-ahead in the project is `modeltable.labels()`.
+**Evidence:** 14,319 rows × 61 columns; 14,231 measured labels; 13,862 complete-case rows (§5 funnel).
+
+## D-030 — No cleaning of Open-Meteo values; snowfall and precipitation are not mutually consistent
+**Status:** PROPOSED · 2026-11-10 (notebook 03 §2)
+**Decision:** no imputation, outlier removal or capping for Open-Meteo inputs.
+**Evidence:**
+- Complete calendars at all 4 stations: 10,592 days, 0 NaN, no duplicate days at chunk seams.
+- Zero violations of the temperature-ordering, non-negativity, RH/cloud bounds, pressure, and sunshine ≤ astronomical day-length checks.
+- The largest precipitation days are documented storms, e.g. Heavenly 2017-01-08, 2021-10-24 and 2022-12-31 atmospheric rivers.
+
+**Finding that revises D-027:** `snowfall_sum` (cm) exceeds 0.7 × `precipitation_sum` (mm) on 9–24 % of wet days, depending on station and precipitation band, with ratios up to 2.45. On 127–321 days per station there is snowfall with 0 precipitation (tiny amounts; minimum 0.07 cm = 0.1 mm × 0.7). The two variables are derived separately. **Never derive rain as precipitation − snowfall/0.7.** D-027's remark that `rain_sum` is approximately derivable is therefore withdrawn. The variable was dropped anyway.
+
+## D-031 — Feature set (causal), Aspen weather, temperature source
+**Status:** PROPOSED · 2026-11-10 (notebook 03 §4; `src/modeltable.py::build_features`)
+**Decision:**
+- **54 feature columns**, every one computed from rows dated ≤ *t*:
+  - calendar (4);
+  - SNOTEL snow state: depth/SWE at *t*, 7/30-day changes, season peak, station precipitation sums (11);
+  - ERA5 day-*t* values (7) and trailing 7/30-day sums/means (22);
+  - season-to-date snowfall, precipitation and positive degree-days (3);
+  - ERA5-Land snow depth and its changes, plus 7-day ERA5-Land temperature (4);
+  - `rob_*` robustness columns (3; D-024; excluded from the main feature set).
+- Trailing windows are **strict**: one missing day makes the feature NaN.
+- **Temperatures come from Open-Meteo only.** SNOTEL temperatures carry sensor drift (Aspen SNOTEL − ERA5 shifts about −1 °C from ~2013, notebook 03 §2.5), and their stuck-sensor rule looks ahead.
+- **Aspen weather** = mean of the Kiln and Brumley requests, each at its own lat/lon/elevation. They are in **different** ERA5 and ERA5-Land cells.
+
+**Evidence:** causality is proved by truncation and future-perturbation tests (`tests/test_modeltable.py`) and re-checked on real data for 40 dates per resort, with max |Δ| = 0 (notebook 03 §4.2). This holds **given the cleaned inputs**; upstream look-ahead is quantified in §4.3.
+
+## D-032 — Split by winter, common calendar for all resorts
+**Status:** PROPOSED · 2026-11-10 (notebook 03 §6)
+**Decision:** **train ≤ 2016, validation 2017–2020, test 2021–2026.** The test set is touched once, after every choice is frozen. Final models are refit on train + validation.
+**Why:**
+- Staff condition 3 (test on later winters).
+- A common calendar keeps comparisons between resorts fair.
+- Six test winters (1,087 rows per resort, 21–26 % of rows) span the extremes: 2023 is deepest on record at Heavenly and 2nd at Brighton; 2026 is the **shallowest on record** at Aspen and Brighton.
+- A summer separates every winter, so no 30-day target window crosses a split.
+
+**Stated caveat:** distribution shift. Test-winter mean depth is lower than training at Aspen (63 vs 70 cm) and Brighton (91 vs 100), equal at Heavenly, and more variable everywhere.
+
+## D-033 — Cross-validation folds are whole winters
+**Status:** PROPOSED · 2026-11-10 (notebook 03 §6.1)
+**Decision:** hyper-parameter tuning uses folds grouped by winter, or expanding-window folds. Days are never shuffled.
+**Evidence:** on train + validation winters only, the same ridge model's MAE looks 15–24 % smaller with shuffled 5-fold CV than with winter-grouped 5-fold CV. Neighbouring rows are near-duplicates.
+
+## D-034 — Hindcast caveat: reanalysis latency
+**Status:** PROPOSED · 2026-11-10 (notebook 03 §4.3)
+**Context:** ERA5 is published about 5 days behind real time. Day-*t* reanalysis stands in for what a real-time analysis would know.
+**Decision:** state this as a hindcast assumption. Milestone 3 adds a sensitivity run with every weather feature lagged 5 days.
+
+## D-035 — Baseline definitions; how models must handle collinearity
+**Status:** PROPOSED · 2026-11-10 (notebook 03 §7–8; `modeltable.climatology`)
+**Decision:**
+- **Climatology** = mean measured SNWD at the target's day of the water year, pooled ±7 days, across training winters only. It is fitted on train for validation scoring and on train + validation for test scoring. A median variant is reported alongside.
+- **Persistence** = `snwd_t`.
+- **Persistence + climatological change** = `snwd_t + clim(target day) − clim(t)`, clipped ≥ 0. This is the strongest simple reference.
+- All baselines are scored on the same rows: measured target and known `snwd_t`.
+
+**Evidence (test MAE, cm):**
+
+| Resort | Persistence + clim. change | Climatology | Persistence |
+|---|---|---|---|
+| Aspen | 11.3 | 14.0 | 22.4 |
+| Brighton | 23.3 | 36.5 | 34.0 |
+| Heavenly | 31.5 | 51.0 | 41.8 |
+
+- The pooling half-width barely matters: under 0.3 cm of validation MAE between ±0 and ±15 days.
+- A leaky climatology that includes the test winters would flatter itself by only 1–5 %; variability between winters dominates.
+
+**Collinearity:** 31 feature pairs have |ρ| > 0.95. `target_dowy` = `dowy` + 30 is used only to look up climatology. Milestone 3 uses ridge/lasso and/or one representative per correlated group; random forests are unaffected.
+
+## D-036 — Open-Meteo grid-cell selection
+**Status:** PROPOSED · 2026-11-10 (notebook 03 §2.1)
+**Finding:** we did not pass `cell_selection`, so Open-Meteo's default `land` applied. That default picks a nearby land cell with terrain elevation close to the requested `elevation=`, not necessarily the nearest cell. The returned cells are 1.5–13 km from the stations and identical across all chunks. The returned elevation equals the one we sent.
+**Decision:** accept and record the cells (notebook 03 §2.1 table). Any future request passes `cell_selection=land` explicitly. Existing requests are not re-issued, because that would cost about 6,000 calls and change nothing.
+
+## D-037 — Causal QC for NRCS original readings (D-024 robustness inputs)
+**Status:** PROPOSED · 2026-11-10 (notebook 03 §9; `modeltable.causal_spike_filter`)
+**Context:** raw NRCS readings contain frequent, often multi-day, sensor glitches (e.g. Brighton 208 in on a 10 in day, 2023-11-23). Kiln has 447 such days since 1998. Notebook 02's spike rule uses a centred window, so it cannot be used for a real-time input.
+**Options:**
+1. Bounds only: glitches pass through.
+2. A plain trailing-median rule: wrongly rejects real readings after a multi-day glitch.
+3. **A recursive rule: compare with the median of the last 7 *accepted* readings, re-anchoring after 30 days with nothing accepted.**
+
+**Decision:** option 3, with a 40 in threshold, plus bounds [−4, 400] in and D-020's negative-depth rule.
+**Evidence** (calibrated on **training winters 1998–2016 only**, per the audit below):
+- At 40 in: Kiln has 137 rejections, Brighton 293, with none wrong and none missed at either. Heavenly has 3 wrong and 31 missed.
+  At 30 in Heavenly would have 104 wrong rejections (real storm days); at 20 in, 364.
+- Brumley has 30 wrong rejections at every threshold: the reference itself was a glitch, at the record start or after a re-anchor.
+- Causality and multi-day glitches (4, 10 and 25 days) are unit-tested.
+
+**Revision (same day, after an independent audit).** The first version used readings accepted *within* the previous 7 days, so it adopted glitches lasting 7 days or more and then rejected the true readings that followed. It was also calibrated on all winters, test winters included. Both are fixed.
+
+## Independent audit of notebook 03 (2026-11-10)
+A separate reviewer audited `src/modeltable.py`, its tests and notebook 03 for leakage. It found **no leak** in the features, labels, split or baselines that affects any result; all scores are unchanged. The fixes it prompted:
+1. `labels()` now sets `y` to NaN unless the target is measured. Previously, 39 imputed Aspen training targets were kept in `y`, guarded only by the `y_measured` flag.
+2. The §6.1 autocorrelation now uses train + validation winters only, with pairs inside the same winter and the lag in days. The earlier version included the test winters and paired days across winters.
+3. The wording of the leakage claims now says "given the cleaned inputs". Upstream look-ahead (NRCS edits and S-flags; which ≤3-day gaps get filled) is quantified in §4.3.
+4. The spike filter for the D-037 robustness inputs was fixed and re-calibrated on training winters only.
+5. Several captions were tightened:
+   - "training winters" for the final test fit means train + validation;
+   - test winters appear in §2, §3 and §6 only for input QC and description;
+   - "measured" means "an NRCS value we did not impute" (which includes NRCS E and K values).
+6. More tests: splits don't overlap, the winter filter works, climatology ignores poisoned `snwd_measured` flags, and multi-day glitches are rejected.
+
 ## Open questions for the group
 - None blocking as of 2026-11-10. D-002 and D-004 are still marked PROPOSED pending explicit group sign-off. D-026 is a proposed extension.
+- D-029 to D-037 (notebook 03) need group review. The most consequential are the split (D-032) and the baseline definitions (D-035).

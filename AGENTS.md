@@ -55,6 +55,7 @@ We must be able to justify every choice in the presentation and the revised prop
 - **SNOTEL is always fetched with `returnFlags=true`, `returnOriginalValues=true`, `returnSuspectData=true`, and `periodRef=END` stated explicitly** (D-009). Never request NRCS normals (`centralTendencyType`) (D-010).
 - All external data goes through `src/lineage.py::fetch()` (D-011). Never use ad-hoc `requests.get` in notebooks. Text/CSV responses go through `src/lineage_text.py`. Downstream notebooks (cleaning, modelling) run with `SNOWPREDICT_OFFLINE=1`, so they can only use logged raw data.
 - **Imputation must be causal** (D-022): only forward-fill short interior gaps, never interpolate using later values. Any new imputation needs a causality unit test.
+- **The split is by winter: train ≤ 2016, validation 2017–2020, test 2021–2026 (D-032).** Touch the test winters once, at the end. CV folds are whole winters (D-033).
 - **Evaluation uses measured, non-imputed SNWD only.** Imputed rows (`SNWD_imputed`) and any reconstructed depth (D-026) are never evaluation truth.
 - Date semantics: SNOTEL SNWD/WTEQ dated *d* is the **end-of-day-*d*** reading. Weather on day *d* pairs with SNWD dated *d*. PREC resets each Oct 1, so use PRCP or difference PREC within a water year.
 - Anything fit to data (scalers, climatology, density model, index weights) is fit on **training winters only**.
@@ -72,6 +73,7 @@ Notebooks import from `src/` by adding `../src` to `sys.path`.
 - `src/lineage.py` — `fetch()`, `open_meteo()`, `snotel()`, and `manifest()`. These cache raw responses and log every fetch to `data/raw/MANIFEST.csv`.
 - `src/sites.py` — the single source of truth for ski areas, candidate SNOTEL stations, the final `RESORTS`, elements, and the date range. Log any change to it in DECISIONS.md.
 - `src/parse.py` — raw JSON → tidy tables (no cleaning). `src/clean.py` — pure cleaning functions used by notebook 02.
+- `src/features.py` — the Open-Meteo feature requests (D-027). `src/modeltable.py` — resort series, causal features, labels (the ONLY look-ahead), climatology and the split (D-029 to D-037). Its leakage guarantees are tested in `tests/test_modeltable.py`; keep them passing.
 - `src/verify_raw.py` — checks every raw file's sha256 against the manifest and flags orphan files.
 - `docs/MS2_CHECKLIST.md` — every Milestone 2 requirement, where it is addressed, and its status. Keep it current.
 
@@ -80,10 +82,13 @@ Notebooks import from `src/` by adding `../src` to `sys.path`.
 ```
 Original Proposal/   original proposal, milestone spec, staff comments (read-only; not in public repo, D-013)
 docs/                DECISIONS.md, DATA_SOURCES.md, LOG.md, MS2_CHECKLIST.md
-src/                 lineage.py, lineage_text.py (fetch + manifest), sites.py, parse.py, clean.py, verify_raw.py
+src/                 lineage.py, lineage_text.py (fetch + manifest), sites.py, parse.py, clean.py, features.py, modeltable.py, verify_raw.py
 tests/               pytest, offline
 data/raw/            untouched API pulls + MANIFEST.csv
-data/processed/      snotel_clean.parquet, cleaning_log.csv, snotel_clean_columns.csv
-notebooks/           01_data_source_eda, 01b_source_verification, 02_cleaning_snotel, ...
+data/processed/      snotel_clean.parquet, cleaning_log.csv, snotel_clean_columns.csv,
+                     model_table.parquet, model_table_columns.csv, baseline_scores.csv
+figures/             PNGs saved by notebooks for the slides (03_*.png)
+scripts/             prefetch_features.py (unattended, resumable Open-Meteo download)
+notebooks/           01_data_source_eda, 01b_source_verification, 02_cleaning_snotel, 03_modelling_table
 pyproject.toml, uv.lock   uv environment
 ```

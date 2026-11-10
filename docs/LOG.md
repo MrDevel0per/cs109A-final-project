@@ -83,3 +83,43 @@ Throwaway probe outputs were in the session scratchpad, not the repo. The querie
 - Check progress with `tail data/prefetch_features.log`. Restart (safe at any time) with `caffeinate -i nohup uv run python scripts/prefetch_features.py >> data/prefetch_features.log 2>&1 &`.
 - **Download complete (2026-11-10 01:12Z).** After one hourly-limit wait (00:50→01:02Z) it fetched all 4 stations (Kiln, Brumley, Brighton, Heavenly) in about 10 minutes. Each station has 10,592 days (1997-07-01 to 2026-06-30) × 14 variables and 0 NaN cells. That is 48 raw chunk files, 4.0 MB. `verify_raw`: 133 files, 0 problems. 37 tests pass. My estimate of a spill past the daily reset was too pessimistic.
 - Next: notebook 03 (modelling table, offline).
+- **01b §3b done (after the quota reset).** Re-executed 01b with network access; only the 2 `aggcheck_*` requests were downloaded. Daily `temperature_2m_mean` = local-day (00–23 h) mean of hourly `temperature_2m`: max |diff| 0.071 °C, 100 % of 181 days within 0.1 °C, 85.6 % / 80.1 % within 0.05 °C. The UTC-day mean agrees on 4–5 % of days. The residual is a constant +0.02 °C precision bias, not a windowing issue. Updated the 01b builder (result cell + summary row), DATA_SOURCES §5 and MS2_CHECKLIST.
+
+## 2026-11-10 — Session 4: notebook 03 (weather-input checks, modelling table, split, baselines)
+**Done**
+- Added `src/modeltable.py`, the single home for resort series, causal features, labels, climatology and the split. Its leakage guarantees are tested in `tests/test_modeltable.py` (truncation, future perturbation, label alignment, climatology poisoning, composite rules, causal QC). The suite now has 64 tests.
+- Added `notebooks/03_modelling_table.ipynb` (89 cells, offline). Its sections:
+  1. Lineage audit of the 48 feature chunks.
+  2. Open-Meteo quality checks: grid cells; completeness and chunk seams; physical checks; distributions and extremes; consistency over time; agreement with SNOTEL; Kiln vs Brumley.
+  3. The target and the Aspen composite.
+  4. The feature catalogue, a leakage audit on real data, and the upstream look-ahead table.
+  5. Labels and row accounting.
+  6. The split, with the random-vs-grouped CV demonstration.
+  7. Baselines, with the leak and half-width checks.
+  8. EDA on training winters, collinearity and scale.
+  9. Robustness inputs.
+  10. Outputs.
+  11. Decisions D-029 to D-037.
+- Outputs:
+  - `data/processed/model_table.parquet`: 14,319 × 61, 2.0 MB.
+  - `model_table_columns.csv` and `baseline_scores.csv`.
+  - 9 slide PNGs in `figures/`.
+- Test MAE (cm) to beat, using persistence + climatological change: Aspen 11.3, Brighton 23.3, Heavenly 31.5. Climatology and persistence each win at some resorts and lose at others.
+
+**Learned**
+- Open-Meteo `snowfall_sum` and `precipitation_sum` are not mutually consistent (D-030).
+- The default `cell_selection=land` picks an elevation-matched cell, 1.5–13 km from each station (D-036).
+- ERA5 sees only 61 % of Brighton's gauge precipitation.
+- Aspen's SNOTEL − ERA5 temperature drifts about −1 °C after ~2013.
+- The test winters include the record 2023 and the shallowest-on-record 2026, at Aspen and Brighton.
+- A random split flatters the error by 15–24 %.
+- Raw NRCS originals are full of multi-day glitches, so they need causal QC (D-037).
+- I wrote about ten statements in the notebook before seeing the outputs, and the outputs contradicted them. All are corrected. Always check the prose against the executed outputs.
+
+**Independent audit:** a separate agent reviewed the leakage logic. No result-changing leak was found. Six fixes were applied; see DECISIONS, "Independent audit of notebook 03".
+
+**Next**
+- Group review of D-029 to D-037.
+- Slides and the revised proposal.
+- Fresh-kernel run of all notebooks; decide whether to submit four notebooks or one combined notebook.
+- Milestone 3: ridge/lasso and random forest with winter-grouped CV; robustness runs (D-024/D-037 originals, D-034 lagged weather).
