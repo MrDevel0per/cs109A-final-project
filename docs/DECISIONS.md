@@ -60,7 +60,21 @@ Only a group member changes an entry's status to `ACCEPTED`.
 **Proposed resorts** (one per snow climate):
 - **Aspen**, continental Colorado (see D-008)
 - **Brighton UT**, intermountain (366:UT:SNTL). SNWD from 1997, a longer record than Snowbird's (~2003)
-- **Palisades Tahoe CA**, maritime (784:CA:SNTL). SNWD from 1998
+- **Palisades Tahoe CA**, maritime (784:CA:SNTL). SNWD from 1998 ← **corrected by notebook 01 §5: the first good winter is 2003 (24 good winters); the sensor exists from 1998 but early winters are too gappy.**
+
+**Update 2026-11-10 (notebook 01 §5 evidence):**
+
+| Station | Climate | Good SNWD winters | First | r vs ERA5-Land | bias |
+|---|---|---|---|---|---|
+| Brighton 366:UT | intermountain | 29 | 1998 | 0.91 | −26 % |
+| Thaynes Canyon 814:UT (Park City) | intermountain | 29 | 1998 | 0.90 | −33 % |
+| Heavenly Valley 518:CA | Sierra (east/rain-shadow) | 27 | 2000 | 0.955 | −35 % |
+| Palisades Tahoe 784:CA | Sierra (west crest, maritime) | 24 | 2003 | 0.91 | −40 % |
+| Stevens Pass 791:WA | Cascades maritime | 23 | 2003 | 0.958 | +8 % (3,940 ft, low) |
+
+Brighton is confirmed as the intermountain choice. For the maritime slot, **the group must pick**: Palisades (the most typical maritime ski
+climate, 24 winters) or Heavenly (3 more winters, best agreement with ERA5-Land, but drier and on the lee side). Stevens Pass is a
+genuinely maritime alternative, but its station is low (1,200 m) and it has the sensor issues found in §2.6 (40 cases of depth < SWE, 82 extreme temperatures).
 
 ## D-008 — How to represent Aspen as one resort
 **Status:** PROPOSED / open · 2026-11-09

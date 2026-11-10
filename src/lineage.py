@@ -16,6 +16,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+import os
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -80,6 +81,9 @@ def fetch(base: str, params: dict, *, source: str, name: str, refresh: bool = Fa
     path = RAW / source / f"{name}__{h}.json"
     if path.exists() and not refresh:
         return json.loads(path.read_bytes())
+    if os.environ.get("SNOWPREDICT_OFFLINE") == "1":
+        # Downstream notebooks (cleaning, modelling) set this so they can ONLY use logged raw data.
+        raise FileNotFoundError(f"offline mode: {name} not in data/raw cache (url: {url})")
 
     r = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=180)
     for attempt in range(max(retries - 1, 0)):

@@ -182,3 +182,13 @@ At this site Open-Meteo's reanalysis tracks real snow depth well, but it is bias
 - **Meteostat:** linked by mistake in the original proposal. Staff require Open-Meteo.
 - **European in-situ snow data** (e.g. Austrian/Swiss/Italian station networks): fragmented across national agencies, often with access requests or non-English portals. No single free API equivalent to SNOTEL.
 - **Resort-reported snow reports (OnTheSnow, etc.):** no historical API. Scraping is fragile, and resort figures are marketing numbers.
+
+---
+
+## 4. Notebook 01 results (2026-11-10). Full evidence is in `notebooks/01_data_source_eda.ipynb` §7
+- `/stations?stationTriplets=*:*:SNTL` returns **only active stations** (919, all with endDate 2100). Use the `activeOnly=false` parameter (if needed) to see retired ones.
+- Flag codes seen in the data but missing from our NRCS definition list: QC `G`, `T` (in `orig_qc_flag`) and QA `U`. They appear on missing/null rows (e.g. `M`/`U` on pre-record PRCP). Treat them as unknown and do not use them as quality evidence.
+- QC flag `C` (sensor equation correction) is on ~56 % of SNOTEL temperature values. This is consistent with NRCS's temperature re-processing.
+- Validation (Dec–Mar, 1995–2026, ERA5-Land at station lat/lon/elevation): depth r 0.85–0.96 except North Lost Trail 0.55; bias −4 % (Kiln) to −59 % (Snowbird); temperature r ≈ 0.9 except Butte 0.12, Nast Lake 0.67.
+- **Date alignment:** SNOTEL value dated *t* best matches Open-Meteo `snow_depth_mean` of day *t+1* (19 of 20 stations; lag correlation of daily changes).
+- Elevation test at Aspen: snow depth 0.69 → 0.73 m at 3400 m (an otherwise constant snow field). Possibly a different grid cell is chosen. Unverified.
