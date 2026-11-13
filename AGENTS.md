@@ -37,7 +37,7 @@ getting the data (including size in MB), understanding it, cleaning it, and the 
 
 We must be able to justify every choice in the presentation and the revised proposal. So:
 
-- **Every decision** goes in `docs/DECISIONS.md` as a numbered entry: context, options considered, choice, why, and the evidence behind it. Mark each entry `PROPOSED` or `ACCEPTED`. Only a group member can mark an entry `ACCEPTED`. Never delete an entry; if a decision changes, add a new entry that supersedes it.
+- **Every decision** goes in `docs/DECISIONS.md` as a numbered entry: date, context, options considered, choice, why, and the evidence behind it. Only decisions the group has actually made are entries; ideas not yet decided go in its "Open for Milestone 3" list. If a decision changes, add a new entry that supersedes it.
 - **Every data finding** (API behaviour, coverage, quirks, validation numbers) goes in `docs/DATA_SOURCES.md`, with the exact query or URL that produced it so anyone can reproduce it.
 - **Every work session** gets a dated entry in `docs/LOG.md`: what was done, what was learned, and what's next.
 - Cleaning steps live in the notebook, each with a one-line reason, because the rubric grades the reasoning.

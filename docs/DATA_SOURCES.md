@@ -252,7 +252,7 @@ Evidence and rules are in `notebooks/02_cleaning_snotel.ipynb`. Each rule's rows
 - **No QA flags before ~2023.** Recent winters are mostly provisional (P), so NRCS may still revise them (D-024).
 
 ## 7. Modelling table and weather-input checks (notebook 03, 2026-11-10)
-Full evidence is in `notebooks/03_modelling_table.ipynb`. Every number below is printed there. Decisions D-029 to D-037.
+Full evidence is in `notebooks/03_modelling_table.ipynb`. Every number below is printed there. Decisions D-029 to D-036 (the notebook is at commit `eca1c57`).
 
 **Inputs and lineage**
 - 48 Open-Meteo feature chunks, 4.11 MB, all re-hashed against MANIFEST. Every request had the model pinned (`era5` / `era5_land`), an explicit `elevation=` (station elevation in m: Kiln 2929, Brumley 3222, Brighton 2679, Heavenly 2603) and `timezone=auto`.
@@ -312,7 +312,7 @@ Full evidence is in `notebooks/03_modelling_table.ipynb`. Every number below is 
 | Brighton | 3,444 | 725 | 1,087 |
 | Heavenly | 3,082 | 725 | 1,087 |
 
-**Raw NRCS originals:** frequent multi-day glitches (e.g. Brighton 2023-11-23: 208 in on a 10 in day). In training winters 1998–2016, the causal QC (D-037) rejects 137 readings at Kiln and 293 at Brighton, with 0 wrong at either.
+**Raw NRCS originals:** frequent multi-day glitches (e.g. Brighton 2023-11-23: 208 in on a 10 in day). In training winters 1998–2016, an exploratory causal QC (since removed, D-042; code at commit `eca1c57`) rejects 137 readings at Kiln and 293 at Brighton, with 0 wrong at either.
 
 ## 8. Whole-project audit observations (2026-11-09 ET)
 

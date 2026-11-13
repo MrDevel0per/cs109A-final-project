@@ -170,3 +170,20 @@ Throwaway probe outputs were in the session scratchpad, not the repo. The querie
 **Next**
 - D-042 accepted by Owen. Group review of D-029 to D-041. Slides and revised proposal PDFs. Older docs cite "notebook 0x §y", which refers to commit `eca1c57`.
 
+
+## 2026-11-13 — Notebook: one-sentence reasons for group-steered choices
+**Done**
+- Added a short "why" to `notebooks/snowpredict.ipynb` markdown wherever a choice was ours rather than forced by the data:
+  US West / Aspen anchor (D-003), raw data in git (D-015), resumable prefetch (D-028), every good winter (D-006),
+  one model per resort and Heavenly for the best record (D-007), the fixed Kiln + Brumley pair from 2004 (D-008),
+  target-date anchoring (D-029), keeping the random-split demo (D-042), one notebook (D-042), and depth over the index (D-005, D-026).
+- Markdown only; no code or outputs changed. The notebook re-executes offline without error.
+- Second pass: reasons for every implemented decision that lacked one in the notebook: D-014 (User-Agent), D-016 (flag policy),
+  D-027 (dropped variables), D-036 (grid cells), D-043 (MAE, 30-day horizon), D-031 (Aspen weather, strict windows),
+  D-034 (5-day reanalysis latency caveat), D-044 (complete case), D-032 (split boundaries), D-035 (±7-day pooling).
+- Trimmed repetition: the duplicate SNOTEL summary table in §2.1 (same numbers as the reshaped table), the doubled
+  "class imbalance" line in §3.8, and the random-split argument in §4.4 that the demonstration below already makes.
+  Re-executed offline: `data/processed/` and `figures/` unchanged.
+
+**Next**
+- Group read-through of the new sentences before submission.

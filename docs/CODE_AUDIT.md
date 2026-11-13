@@ -68,7 +68,7 @@ There is no completed model experiment establishing the effect on error is negli
 **Smallest useful remedy:** use a forward fill limited by elapsed days since the last observation, including the first three days of a longer gap,
 or use no imputation for model inputs. Keeping long gaps entirely empty while filling their early days only if they later end is incompatible
 with issue-date availability. Retain the non-imputed label mask. Add a prefix-invariance test and a test changing future missingness, and rebuild
-the tables if the policy changes. D-038 proposes this correction without changing the accepted D-022 entry.
+the tables if the policy changes. This is listed as an open Milestone 3 item in DECISIONS.md; D-022 is unchanged.
 
 **Related limit:** the centered spike and whole-run stuck-sensor rules also use future data. The real-data audit correctly finds zero centered
 SNWD/WTEQ spike removals in the relevant four-station Oct–Apr period, and the temperature columns are not model features. Do not describe the
@@ -110,7 +110,7 @@ There is currently no final ML score, so no unfair model-versus-baseline compari
 
 **Recommendation:** omit those two station precipitation features from the initial models. Open-Meteo precipitation already supplies both windows;
 the reduction restores **230 Aspen rows**, including all of winter 2021, without adding an imputer or another data source. Retain the columns in the
-provenance table if useful. Make this a coverage-driven decision, not a choice based on test errors. D-040 records the proposal.
+provenance table if useful. Make this a coverage-driven decision, not a choice based on test errors. It is listed as an open Milestone 3 item in DECISIONS.md.
 
 When comparing models, re-score all baselines on the exact same eligible resort/date keys as that model, or define one common comparison set in
 advance. Report full-coverage baseline scores separately. Otherwise apparent skill could reflect dropping an entire winter.
@@ -236,5 +236,5 @@ predicted. Staff approval conditions do not require the density extension; chang
 ## Changes made during this audit
 
 Only the 01b group header, README, checklist and audit documentation were edited. Numerical code, splits, raw data, processed tables and figures
-were left unchanged. Proposed remediation/scope decisions are D-038–D-041; none was marked ACCEPTED. Reproducible data checks are recorded in
+were left unchanged. A-01 and A-05 were adopted as D-039 and D-042; the rest are open Milestone 3 items in DECISIONS.md. Reproducible data checks are recorded in
 `DATA_SOURCES.md` §8, and the session is recorded in `LOG.md`.

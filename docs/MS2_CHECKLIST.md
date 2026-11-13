@@ -50,7 +50,7 @@ tuning and robustness experiments below are later work.
 ## Remaining work
 - [x] Open-Meteo feature fetch for the 3 resorts, plus quality checks (03 §1–2; D-030, D-036). Done 2026-11-10.
 - [x] Aspen composite, modelling table, split by winter (D-032), baselines (D-035). Done 2026-11-10 in notebook 03.
-- [ ] Group review of D-029 to D-037 (PROPOSED). The split and baseline definitions are the ones TFs will ask about.
+- [x] DECISIONS.md cleaned up 2026-11-13: statuses removed, unadopted proposals moved to an "Open for Milestone 3" list. The split (D-032) and baselines (D-035) are the ones TFs will ask about.
 - [x] Re-run notebook 01b §3b (the Open-Meteo temperature daily-vs-hourly check). Done 2026-11-10. Daily `temperature_2m_mean` = local-day mean of hourly values: max |diff| 0.071 °C, 100 % within 0.1 °C, 80–86 % within 0.05 °C. The UTC-day mean agrees on only 4–5 % of days. The residual is a constant +0.02 °C precision bias (DATA_SOURCES §5).
 - [x] Put the group number and names in every notebook header.
 - [x] Audit: restart and run all four notebooks offline in separate fresh kernels; all six processed files reproduced byte for byte.
@@ -59,16 +59,16 @@ tuning and robustness experiments below are later work.
 - [ ] Revised proposal PDF (1–2 pages).
 
 ## Milestone 3 follow-up (not Milestone 2 submission requirements)
-- [ ] Resolve audit A-01 to A-04 before final modelling claims; group review of D-038 to D-041 (PROPOSED).
+- [ ] Resolve audit A-01 to A-04 before final modelling claims; see "Open for Milestone 3" in DECISIONS.md.
 - [ ] Train/tune the planned models, run robustness experiments and compare models/baselines on common dates.
 
 ## Revised proposal (1–2 pages)
 | Item | Status | Notes |
 |---|---|---|
 | Revised question, plus how and why it changed | 🟡 | Wording above. Europe → US West/Aspen (D-003); target is measured SNWD (D-005); 3 resorts (D-007); ski-condition index kept as a secondary output (D-026) |
-| Data source with link; rows × columns after cleaning | 🟡 | Open-Meteo: https://open-meteo.com/en/docs/historical-weather-api. SNOTEL: https://wcc.sc.egov.usda.gov/awdbRestApi/. Clean SNOTEL table 285,778 × 49. Modelling table 14,319 × 61 (54 features; 14,231 measured labels; 13,862 complete-case rows) |
+| Data source with link; rows × columns after cleaning | 🟡 | Open-Meteo: https://open-meteo.com/en/docs/historical-weather-api. SNOTEL: https://wcc.sc.egov.usda.gov/awdbRestApi/. Clean SNOTEL table 285,778 × 49. Modelling table 14,319 × 58 (51 feature columns; 14,231 measured labels; 13,862 complete-case rows) |
 | What we learned that changes the plan | ✅ | `best_match` break (D-002); snow ignores elevation; no forecast hindcasts (D-004); ~⅓ of values edited by NRCS (D-009/D-024); SNWD record length (D-005/D-006); ERA5-Land depth biased low (−4 % to −59 %) |
-| Plan: features, models, evaluation | 🟡 | Ridge and random forest, one per resort, with winter-aware tuning; MAE/RMSE/bias on identical comparison rows. Existing exploratory test baseline scores are in notebook 03; this is no longer an unseen holdout. Complete originals and five-day weather-lag experiments remain Milestone 3 work. Audit recommends omitting redundant station PRCP windows and deferring SWE→density reconstruction (D-040/D-041, PROPOSED) |
+| Plan: features, models, evaluation | 🟡 | Ridge and random forest, one per resort, with winter-aware tuning; MAE/RMSE/bias on identical comparison rows. Exploratory test baseline scores exist at commit `eca1c57`; this is disclosed (D-039). Complete originals and five-day weather-lag experiments remain Milestone 3 work. SWE→density reconstruction is not in the plan (D-026); dropping station PRCP windows is an open item |
 
 ## Staff conditions (approved, with conditions)
 | Condition | How we meet it | Status |
